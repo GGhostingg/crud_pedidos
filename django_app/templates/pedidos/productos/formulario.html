@@ -1,0 +1,56 @@
+{% extends 'pedidos/base.html' %}
+{% block title %}{% if object %}Editar{% else %}Nuevo{% endif %} Producto{% endblock %}
+{% block topbar_title %}{% if object %}Editar Producto{% else %}Nuevo Producto{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{% if object %}Editar Producto{% else %}Nuevo Producto{% endif %}</h1>
+        <p class="page-subtitle">{% if object %}Modifica los datos del producto{% else %}Ingresa los datos del nuevo producto{% endif %}</p>
+    </div>
+</div>
+
+<div class="card form-card">
+    <div class="card-header">
+        <i class="bi bi-box{% if object %}-arrow-in-right{% else %}-fill{% endif %} me-1" style="color:var(--primary);"></i>
+        Datos del Producto
+    </div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="{{ form.nombre.id_for_label }}" class="form-label">Nombre</label>
+                {{ form.nombre }}
+                {% for error in form.nombre.errors %}
+                    <div class="form-text text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <div class="mb-3">
+                <label for="{{ form.precio.id_for_label }}" class="form-label">Precio</label>
+                <div class="input-group">
+                    <span style="display:flex; align-items:center; padding:0 .75rem; background:#f8fafc; border:1px solid var(--border); border-right:none; border-radius:7px 0 0 7px; color:var(--text-muted); font-size:.875rem;">$</span>
+                    {{ form.precio }}
+                </div>
+                {% for error in form.precio.errors %}
+                    <div class="form-text text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <div class="mb-4">
+                <label for="{{ form.stock.id_for_label }}" class="form-label">Stock</label>
+                {{ form.stock }}
+                {% for error in form.stock.errors %}
+                    <div class="form-text text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <div style="display:flex; gap:.5rem;">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-floppy"></i> Guardar
+                </button>
+                <a href="{% url 'producto-list' %}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

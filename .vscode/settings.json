@@ -1,0 +1,12 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^cd django_app ; python manage\\.py check$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^cd 'c:\\\\Users\\\\Gabriel Mesa\\\\crud_pedidos\\\\django_app'; & \"C:/Program Files/Python314/python\\.exe\" -c \"import os,sys; sys\\.path\\.insert\\(0, os\\.getcwd\\(\\)\\); os\\.environ\\.setdefault\\('DJANGO_SETTINGS_MODULE','config\\.settings'\\); import django; django\\.setup\\(\\); from pedidos\\.forms import CustomUserCreationForm; f=CustomUserCreationForm\\(\\{'username':'Daniel Meza','email':'daniel@mail\\.com','password1':'123456789a','password2':'123456789a'\\}\\); print\\('is_valid', f\\.is_valid\\(\\)\\); print\\(f\\.errors\\.as_data\\(\\)\\); print\\(getattr\\(f,'cleaned_data', 'no cleaned'\\)\\);\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

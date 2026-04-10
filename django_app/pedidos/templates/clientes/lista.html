@@ -1,0 +1,84 @@
+{# pedidos/templates/pedidos/clientes/lista.html #}
+{% extends 'pedidos/base.html' %}
+{% block title %}Clientes{% endblock %}
+{% block content %}
+<div class='d-flex justify-content-between align-items-center mb-3'>
+  <h2>Clientes</h2>
+  <a href='{% url "cliente-create" %}' class='btn btn-primary'>+ Nuevo cliente</a>
+</div>
+
+<table class='table table-striped table-hover'>
+  <thead class='table-dark'>
+    <tr><th>ID</th><th>Nombre</th><th>Correo</th><th>Teléfono</th><th>Acciones</th></tr>
+  </thead>
+  <tbody>
+    {% for cliente in clientes %}
+    <tr>
+      <td>{{ cliente.id }}</td>
+      <td>{{ cliente.nombre }}</td>
+      <td>{{ cliente.correo }}</td>
+      <td>{{ cliente.telefono }}</td>
+      <td>
+        <a href='{% url "cliente-update" cliente.id %}' class='btn btn-warning btn-sm' title="Editar"><i class="bi bi-pencil"></i></a>
+        <button class='btn btn-danger btn-sm btn-eliminar'
+                data-url='{% url "cliente-delete" cliente.id %}' title="Eliminar"><i class="bi bi-trash"></i></button>
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan='5' class='text-center'>No hay clientes registrados.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{# PAGINACIÓN #}
+<nav>
+  <ul class='pagination justify-content-center'>
+    {% if page_obj.has_previous %}
+      <li class='page-item'>
+        <a class='page-link' href='?page={{ page_obj.previous_page_number }}'>Anterior</a>
+      </li>
+    {% endif %}
+    <li class='page-item disabled'>
+      <span class='page-link'>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+    </li>
+    {% if page_obj.has_next %}
+      <li class='page-item'>
+        <a class='page-link' href='?page={{ page_obj.next_page_number }}'>Siguiente</a>
+      </li>
+    {% endif %}
+  </ul>
+</nav>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// SweetAlert2 — confirmar eliminación
+document.querySelectorAll('.btn-eliminar').forEach(btn => {
+  btn.addEventListener('click', () => {
+    Swal.fire({
+      title: '¿Eliminar este cliente?',
+      text: 'Esta acción no se puede deshacer.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    }).then(result => {
+      if (result.isConfirmed) {
+        // Crear y enviar formulario POST para eliminar
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = btn.dataset.url;
+        const csrf = document.createElement('input');
+        csrf.type = 'hidden';
+        csrf.name = 'csrfmiddlewaretoken';
+        csrf.value = '{{ csrf_token }}';
+        form.appendChild(csrf);
+        document.body.appendChild(form);
+        form.submit();
+      }
+    });
+  });
+});
+</script>
+{% endblock %}

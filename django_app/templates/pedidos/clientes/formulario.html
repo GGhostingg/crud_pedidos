@@ -1,0 +1,60 @@
+{% extends 'pedidos/base.html' %}
+{% block title %}{% if object %}Editar{% else %}Nuevo{% endif %} Cliente{% endblock %}
+{% block topbar_title %}{% if object %}Editar Cliente{% else %}Nuevo Cliente{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{% if object %}Editar Cliente{% else %}Nuevo Cliente{% endif %}</h1>
+        <p class="page-subtitle">{% if object %}Modifica los datos del cliente{% else %}Ingresa los datos del nuevo cliente{% endif %}</p>
+    </div>
+</div>
+
+<div class="card form-card">
+    <div class="card-header">
+        <i class="bi bi-person{% if object %}-gear{% else %}-plus{% endif %} me-1" style="color:var(--primary);"></i>
+        Datos del Cliente
+    </div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="{{ form.nombre.id_for_label }}" class="form-label">Nombre</label>
+                {{ form.nombre }}
+                {% for error in form.nombre.errors %}
+                    <div class="form-text text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <div class="mb-3">
+                <label for="{{ form.correo.id_for_label }}" class="form-label">Correo electrónico</label>
+                {{ form.correo }}
+                {% for error in form.correo.errors %}
+                    <div class="form-text text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <div class="mb-3">
+                <label for="{{ form.direccion.id_for_label }}" class="form-label">Dirección</label>
+                {{ form.direccion }}
+                {% for error in form.direccion.errors %}
+                    <div class="form-text text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <div class="mb-4">
+                <label for="{{ form.telefono.id_for_label }}" class="form-label">Teléfono</label>
+                {{ form.telefono }}
+                {% for error in form.telefono.errors %}
+                    <div class="form-text text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <div style="display:flex; gap:.5rem;">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-floppy"></i> Guardar
+                </button>
+                <a href="{% url 'cliente-list' %}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

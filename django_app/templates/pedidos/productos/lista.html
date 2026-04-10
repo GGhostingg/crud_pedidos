@@ -1,0 +1,104 @@
+{% extends 'pedidos/base.html' %}
+{% block title %}Productos{% endblock %}
+{% block topbar_title %}Productos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Productos</h1>
+        <p class="page-subtitle">Catálogo de productos disponibles</p>
+    </div>
+    {% if user.is_staff %}
+    <div class="page-actions">
+        <a href="{% url 'producto-create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> Nuevo Producto
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<div class="table-card">
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Nombre</th>
+                    <th>Precio</th>
+                    <th>Stock</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for producto in productos %}
+                <tr>
+                    <td><span class="id-badge">{{ producto.id }}</span></td>
+                    <td style="font-weight:500;">{{ producto.nombre }}</td>
+                    <td>
+                        <span style="font-weight:600; color:var(--primary);">${{ producto.precio }}</span>
+                    </td>
+                    <td>
+                        {% if producto.stock <= 5 %}
+                            <span style="display:inline-flex; align-items:center; gap:.3rem; background:#fee2e2; color:#991b1b; padding:.18rem .55rem; border-radius:20px; font-size:.72rem; font-weight:600;">
+                                <span style="width:6px; height:6px; border-radius:50%; background:#dc2626; display:inline-block;"></span>
+                                {{ producto.stock }} — bajo
+                            </span>
+                        {% else %}
+                            <span style="display:inline-flex; align-items:center; gap:.3rem; background:#d1fae5; color:#065f46; padding:.18rem .55rem; border-radius:20px; font-size:.72rem; font-weight:600;">
+                                <span style="width:6px; height:6px; border-radius:50%; background:#10b981; display:inline-block;"></span>
+                                {{ producto.stock }}
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if user.is_staff %}
+                        <div style="display:flex; gap:.35rem;">
+                            <a href="{% url 'producto-update' producto.pk %}" class="btn btn-sm btn-warning" title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'producto-delete' producto.pk %}" class="btn btn-sm btn-danger" title="Eliminar">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </div>
+                        {% else %}
+                        <span style="font-size:.78rem; color:var(--text-muted);">Sin permisos</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" style="text-align:center; padding:2.5rem; color:var(--text-muted);">
+                        <i class="bi bi-box" style="font-size:2rem; display:block; margin-bottom:.5rem; opacity:.4;"></i>
+                        No hay productos registrados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if is_paginated %}
+    <div class="pagination-wrap">
+        <ul class="pagination">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">
+                        <i class="bi bi-chevron-left"></i> Anterior
+                    </a>
+                </li>
+            {% endif %}
+            <li class="page-item active">
+                <span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+            </li>
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">
+                        Siguiente <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+            {% endif %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

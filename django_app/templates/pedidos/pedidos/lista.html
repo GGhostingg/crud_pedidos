@@ -1,0 +1,145 @@
+{% extends 'pedidos/base.html' %}
+{% block title %}{{ page_title|default:'Pedidos' }}{% endblock %}
+{% block topbar_title %}{{ page_title|default:'Pedidos' }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ page_title|default:'Pedidos' }}</h1>
+        {% if page_note %}
+            <p class="page-subtitle">{{ page_note }}</p>
+        {% else %}
+            <p class="page-subtitle">Gestiona y consulta todos los pedidos</p>
+        {% endif %}
+    </div>
+    <div class="page-actions">
+        {% if user.is_staff %}
+        <a href="{% url 'exportar-excel' %}" class="btn btn-success">
+            <i class="bi bi-file-earmark-excel"></i> Excel
+        </a>
+        <a href="{% url 'exportar-pdf' %}" class="btn btn-danger">
+            <i class="bi bi-file-earmark-pdf"></i> PDF
+        </a>
+        {% endif %}
+        <a href="{% url 'pedido-create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> Nuevo Pedido
+        </a>
+    </div>
+</div>
+
+<div class="table-card">
+    <div class="table-toolbar">
+        <form method="get" style="display:flex; gap:.5rem; align-items:center;">
+            <select name="estado" class="form-select" style="width:auto; min-width:140px;">
+                <option value="">Todos los estados</option>
+                <option value="Pendiente"  {% if request.GET.estado == 'Pendiente'  %}selected{% endif %}>Pendiente</option>
+                <option value="Enviado"    {% if request.GET.estado == 'Enviado'    %}selected{% endif %}>Enviado</option>
+                <option value="Entregado"  {% if request.GET.estado == 'Entregado'  %}selected{% endif %}>Entregado</option>
+                <option value="Anulado"    {% if request.GET.estado == 'Anulado'    %}selected{% endif %}>Anulado</option>
+            </select>
+            <button type="submit" class="btn btn-outline-secondary">
+                <i class="bi bi-funnel"></i> Filtrar
+            </button>
+            {% if request.GET.estado %}
+            <a href="?" class="btn btn-secondary"><i class="bi bi-x"></i> Limpiar</a>
+            {% endif %}
+        </form>
+        <span style="font-size:.8rem; color:var(--text-muted);">
+            {{ pedidos|length }} pedido{% if pedidos|length != 1 %}s{% endif %}
+        </span>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Cliente</th>
+                    <th>Productos</th>
+                    <th>Fecha</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pedido in pedidos %}
+                <tr>
+                    <td><span class="id-badge">{{ pedido.id }}</span></td>
+                    <td style="font-weight:500;">{{ pedido.cliente.nombre }}</td>
+                    <td style="color:var(--text-muted); font-size:.82rem; max-width:220px;">
+                        {% for detalle in pedido.detalles.all %}
+                            {{ detalle.producto.nombre }} <span style="font-weight:600; color:var(--text);">×{{ detalle.cantidad }}</span>{% if not forloop.last %}, {% endif %}
+                        {% empty %}
+                            —
+                        {% endfor %}
+                    </td>
+                    <td style="color:var(--text-muted); white-space:nowrap;">{{ pedido.fecha }}</td>
+                    <td>
+                        {% if pedido.estado == 'Pendiente' %}
+                            <span class="status-badge status-pendiente">{{ pedido.estado }}</span>
+                        {% elif pedido.estado == 'Enviado' %}
+                            <span class="status-badge status-enviado">{{ pedido.estado }}</span>
+                        {% elif pedido.estado == 'Entregado' %}
+                            <span class="status-badge status-entregado">{{ pedido.estado }}</span>
+                        {% elif pedido.estado == 'Anulado' %}
+                            <span class="status-badge status-anulado">{{ pedido.estado }}</span>
+                        {% else %}
+                            <span class="status-badge status-anulado">{{ pedido.estado }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if user.is_staff %}
+                        <div style="display:flex; gap:.35rem;">
+                            <a href="{% url 'pedido-update' pedido.pk %}" class="btn btn-sm btn-warning" title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'pedido-delete' pedido.pk %}" class="btn btn-sm btn-danger" title="Eliminar">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </div>
+                        {% else %}
+                            {% if pedido.estado == 'Pendiente' %}
+                            <a href="{% url 'pedido-anular' pedido.pk %}" class="btn btn-sm btn-danger" title="Anular pedido">
+                                <i class="bi bi-x-circle"></i> Anular
+                            </a>
+                            {% endif %}
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" style="text-align:center; padding:2.5rem; color:var(--text-muted);">
+                        <i class="bi bi-bag" style="font-size:2rem; display:block; margin-bottom:.5rem; opacity:.4;"></i>
+                        No se encontraron pedidos.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if is_paginated %}
+    <div class="pagination-wrap">
+        <ul class="pagination">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}">
+                        <i class="bi bi-chevron-left"></i> Anterior
+                    </a>
+                </li>
+            {% endif %}
+            <li class="page-item active">
+                <span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+            </li>
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}">
+                        Siguiente <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+            {% endif %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
