@@ -50,3 +50,19 @@ def eliminar(pid: int, db: Session=Depends(get_db), _=Depends(auth.get_current_a
     p = db.query(models.Producto).filter(models.Producto.id==pid).first()
     if not p: raise HTTPException(404, 'Producto no encontrado')
     db.delete(p); db.commit()
+
+@router.get('/public/')
+def listar_publico(
+    skip:  int = 0,
+    limit: int = 10,
+    db:    Session = Depends(get_db)
+):
+    total = db.query(models.Producto).count()
+    productos = db.query(models.Producto).offset(skip).limit(limit).all()
+    return {'total': total, 'datos': productos}
+
+@router.get('/public/{pid}', response_model=schemas.ProductoResponse)
+def obtener_publico(pid: int, db: Session=Depends(get_db)):
+    p = db.query(models.Producto).filter(models.Producto.id==pid).first()
+    if not p: raise HTTPException(404, 'Producto no encontrado')
+    return p

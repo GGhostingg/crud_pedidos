@@ -14,6 +14,7 @@ from django.views import View
 from django.db.models import Count, Sum
 from django.contrib.auth import login, authenticate
 from django.contrib.auth.forms import AuthenticationForm
+import json
 from django.http import JsonResponse
 from .models import Cliente, Producto, Pedido, DetallePedido
 from .forms import CustomAuthenticationForm, CustomUserCreationForm, ClienteForm, ProductoForm, PedidoForm, PedidoCreateForm
@@ -191,6 +192,12 @@ class PedidoCreateView(LoginRequiredMixin, CreateView):
             form.fields['estado'].initial = 'Pendiente'
             form.fields['estado'].widget = forms.HiddenInput()
         return form
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        products = Producto.objects.filter(stock__gt=0).values('id', 'precio')
+        context['product_prices_json'] = json.dumps({str(p['id']): float(p['precio']) for p in products})
+        return context
 
     def form_valid(self, form):
         producto = form.cleaned_data['producto']

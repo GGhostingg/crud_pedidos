@@ -68,7 +68,10 @@
                     <td style="font-weight:500;">{{ pedido.cliente.nombre }}</td>
                     <td style="color:var(--text-muted); font-size:.82rem; max-width:220px;">
                         {% for detalle in pedido.detalles.all %}
-                            {{ detalle.producto.nombre }} <span style="font-weight:600; color:var(--text);">×{{ detalle.cantidad }}</span>{% if not forloop.last %}, {% endif %}
+                            {{ detalle.producto.nombre }}
+                            <span style="font-weight:600; color:var(--text);">×{{ detalle.cantidad }}</span>
+                            <span style="color:var(--text-muted); font-size:.78rem;">(${{ detalle.producto.precio|floatformat:2 }} c/u)</span>
+                            {% if not forloop.last %}, {% endif %}
                         {% empty %}
                             —
                         {% endfor %}

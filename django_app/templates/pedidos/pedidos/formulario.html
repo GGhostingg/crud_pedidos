@@ -43,6 +43,17 @@
                 {% endfor %}
             </div>
 
+            {% if 'producto' in form.fields %}
+            <div class="mb-3">
+                <label class="form-label">Precio unitario</label>
+                <div id="product-price" class="form-control-plaintext">—</div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Subtotal</label>
+                <div id="product-subtotal" class="form-control-plaintext">—</div>
+            </div>
+            {% endif %}
+
             <div class="mb-3">
                 <label for="{{ form.cantidad.id_for_label }}" class="form-label">Cantidad</label>
                 {{ form.cantidad }}
@@ -72,4 +83,45 @@
         </form>
     </div>
 </div>
+
+{% if 'producto' in form.fields %}
+<script>
+(function () {
+    var prices = {{ product_prices_json|default:'{}'|safe }};
+    var productSelect = document.getElementById('{{ form.producto.id_for_label }}');
+    var quantityInput = document.getElementById('{{ form.cantidad.id_for_label }}');
+    var priceDisplay = document.getElementById('product-price');
+    var subtotalDisplay = document.getElementById('product-subtotal');
+
+    function formatMoney(value) {
+        if (value === null || value === undefined || Number.isNaN(value)) {
+            return '—';
+        }
+        return '$' + Number(value).toFixed(2);
+    }
+
+    function updatePrice() {
+        if (!productSelect || !priceDisplay || !subtotalDisplay) return;
+        var selectedId = productSelect.value;
+        var unitPrice = prices[selectedId];
+        priceDisplay.textContent = formatMoney(unitPrice);
+        var qty = quantityInput ? parseInt(quantityInput.value, 10) : 0;
+        if (!qty || !unitPrice) {
+            subtotalDisplay.textContent = '—';
+            return;
+        }
+        subtotalDisplay.textContent = formatMoney(unitPrice * qty);
+    }
+
+    if (productSelect) {
+        productSelect.addEventListener('change', updatePrice);
+    }
+    if (quantityInput) {
+        quantityInput.addEventListener('input', updatePrice);
+    }
+
+    updatePrice();
+})();
+</script>
+{% endif %}
 {% endblock %}
