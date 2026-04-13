@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, validator
+from pydantic import BaseModel, EmailStr, field_validator, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
@@ -7,6 +7,7 @@ class EstadoPedido(str, Enum):
     pendiente  = 'Pendiente'
     enviado    = 'Enviado'
     entregado  = 'Entregado'
+    anulado    = 'Anulado'
 
 class Token(BaseModel):
     access_token: str
@@ -31,19 +32,21 @@ class ClienteCreate(ClienteBase): pass
 
 class ClienteResponse(ClienteBase):
     id: int
-    class Config: from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ProductoBase(BaseModel):
     nombre: str
     precio: float
     stock:  int
 
-    @validator('precio')
+    @field_validator('precio')
+    @classmethod
     def precio_positivo(cls, v):
         if v <= 0: raise ValueError('El precio debe ser mayor que cero')
         return v
 
-    @validator('stock')
+    @field_validator('stock')
+    @classmethod
     def stock_no_negativo(cls, v):
         if v < 0: raise ValueError('El stock no puede ser negativo')
         return v
@@ -51,7 +54,7 @@ class ProductoBase(BaseModel):
 class ProductoCreate(ProductoBase): pass
 class ProductoResponse(ProductoBase):
     id: int
-    class Config: from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class DetallePedidoIn(BaseModel):
     producto_id: int
@@ -60,7 +63,7 @@ class DetallePedidoIn(BaseModel):
 class DetallePedidoOut(DetallePedidoIn):
     id: int
     subtotal: float
-    class Config: from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class PedidoCreate(BaseModel):
     cliente_id: int
@@ -70,7 +73,8 @@ class PedidoCreate(BaseModel):
 class PedidoResponse(BaseModel):
     id: int
     cliente_id: int
+    usuario_id: Optional[int] = None
     fecha: datetime
     estado: str
     detalles: List[DetallePedidoOut] = []
-    class Config: from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

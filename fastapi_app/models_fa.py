@@ -31,8 +31,9 @@ class Pedido(Base):
     __tablename__ = 'pedidos'
     id         = Column(Integer, primary_key=True)
     cliente_id = Column(Integer, ForeignKey('clientes.id'))
+    usuario_id = Column(Integer, ForeignKey('auth_user.id'), nullable=True)
     fecha      = Column(DateTime, default=datetime.utcnow)
-    estado     = Column(Enum('Pendiente','Enviado','Entregado'), default='Pendiente')
+    estado     = Column(Enum('Pendiente','Enviado','Entregado','Anulado'), default='Pendiente')
     cliente    = relationship('Cliente', back_populates='pedidos')
     detalles   = relationship('DetallePedido', back_populates='pedido')
 

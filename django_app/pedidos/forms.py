@@ -51,6 +51,26 @@ class CustomUserCreationForm(UserCreationForm):
         }
     )
 
+    telefono = forms.CharField(
+        required=False,
+        label='Teléfono',
+        max_length=20,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Número de teléfono (opcional)'
+        })
+    )
+
+    direccion = forms.CharField(
+        required=False,
+        label='Dirección',
+        max_length=200,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Tu dirección (opcional)'
+        })
+    )
+
     class Meta:
         model = User
         fields = ['username', 'email', 'password1', 'password2']

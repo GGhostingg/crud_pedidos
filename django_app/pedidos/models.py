@@ -4,6 +4,9 @@ from django.contrib.auth.models import User
 # Create your models here.
 
 class Cliente(models.Model):
+    usuario   = models.OneToOneField(
+        User, on_delete=models.CASCADE, null=True, blank=True, related_name='cliente_perfil'
+    )
     nombre    = models.CharField(max_length=100)
     correo    = models.EmailField(unique=True)
     direccion = models.CharField(max_length=200, blank=True)
@@ -37,7 +40,7 @@ class Pedido(models.Model):
         ('Anulado',    'Anulado'),
     ]
     cliente = models.ForeignKey(
-        Cliente, on_delete=models.CASCADE, related_name='pedidos'
+        Cliente, on_delete=models.PROTECT, related_name='pedidos'
     )
     usuario = models.ForeignKey(
         User, on_delete=models.CASCADE, null=True, blank=True,

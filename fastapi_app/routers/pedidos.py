@@ -20,13 +20,17 @@ def listar(
 def crear(
     datos: schemas.PedidoCreate,
     db:    Session = Depends(get_db),
-    _:     models.Usuario = Depends(auth.get_current_user)  # Usuarios pueden crear pedidos
+    usuario: models.Usuario = Depends(auth.get_current_user)
 ):
     cliente = db.query(models.Cliente).filter(models.Cliente.id==datos.cliente_id).first()
     if not cliente:
         raise HTTPException(404, 'Cliente no encontrado')
 
-    pedido = models.Pedido(cliente_id=datos.cliente_id, estado=datos.estado)
+    pedido = models.Pedido(
+        cliente_id=datos.cliente_id,
+        usuario_id=usuario.id,
+        estado=datos.estado
+    )
     db.add(pedido)
     db.flush()
 
@@ -64,6 +68,30 @@ def actualizar(
     # Lógica para actualizar, simplificada
     p.estado = datos.estado
     db.commit(); db.refresh(p)
+    return p
+
+@router.post('/{pid}/anular', response_model=schemas.PedidoResponse)
+def anular(
+    pid: int,
+    db: Session = Depends(get_db),
+    _: models.Usuario = Depends(auth.get_current_user)
+):
+    """Anula un pedido solo si está Pendiente y restaura el stock."""
+    p = db.query(models.Pedido).filter(models.Pedido.id==pid).first()
+    if not p:
+        raise HTTPException(404, 'Pedido no encontrado')
+    if p.estado != 'Pendiente':
+        raise HTTPException(400, 'Solo se pueden anular pedidos en estado Pendiente')
+
+    # Restaurar stock de cada detalle
+    for detalle in p.detalles:
+        prod = db.query(models.Producto).filter(models.Producto.id==detalle.producto_id).first()
+        if prod:
+            prod.stock += detalle.cantidad
+
+    p.estado = 'Anulado'
+    db.commit()
+    db.refresh(p)
     return p
 
 @router.delete('/{pid}', status_code=204)

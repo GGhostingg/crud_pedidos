@@ -35,3 +35,5 @@ urlpatterns = [
     path('registro/', views.RegistroView.as_view(), name='registro'),
     path('', include('pedidos.urls')),
 ]
+
+handler403 = 'pedidos.views.handler_403'

@@ -9,6 +9,7 @@ from django.urls import reverse_lazy
 from django.core.paginator import Paginator
 from django.contrib import messages
 from django.db import models
+from django.db import transaction
 from django.db.models.deletion import ProtectedError
 from django.views import View
 from django.db.models import Count, Sum
@@ -86,8 +87,7 @@ class ClienteDeleteView(StaffRequiredMixin, DeleteView):
             messages.success(request, 'Cliente eliminado.')
             return response
         except ProtectedError:
-            messages.error(request, 'No se puede eliminar el cliente porque tiene pedidos asociados. Primero elimina los pedidos relacionados.')
-            return redirect(self.success_url)
+            return render(request, 'protected_error.html', {'object_type': 'cliente'}, status=400)
 
 
 # ── PRODUCTOS ─────────────────────────────────────────────────────────
@@ -130,8 +130,7 @@ class ProductoDeleteView(StaffRequiredMixin, DeleteView):
             messages.success(request, 'Producto eliminado.')
             return response
         except ProtectedError:
-            messages.error(request, 'No se puede eliminar el producto porque está en un pedido activo.')
-            return redirect(self.success_url)
+            return render(request, 'protected_error.html', {'object_type': 'producto'}, status=400)
 
 
 
@@ -199,9 +198,13 @@ class PedidoCreateView(LoginRequiredMixin, CreateView):
         context['product_prices_json'] = json.dumps({str(p['id']): float(p['precio']) for p in products})
         return context
 
+    @transaction.atomic
     def form_valid(self, form):
         producto = form.cleaned_data['producto']
         cantidad = form.cleaned_data['cantidad']
+        if producto.stock < cantidad:
+            messages.error(self.request, f'Stock insuficiente. Disponible: {producto.stock}')
+            return self.form_invalid(form)
         if not self.request.user.is_staff:
             form.instance.cliente = self.get_cliente_for_user(self.request.user)
             form.instance.estado = 'Pendiente'
@@ -218,25 +221,26 @@ class PedidoCreateView(LoginRequiredMixin, CreateView):
         return redirect(self.get_success_url())
 
     def get_cliente_for_user(self, user):
+        """Obtiene o crea el cliente vinculado al usuario autenticado."""
         nombre_cliente = user.get_full_name() or user.username
-        if user.email:
-            cliente, _ = Cliente.objects.get_or_create(
-                correo=user.email,
-                defaults={
-                    'nombre': nombre_cliente,
-                    'direccion': '',
-                    'telefono': '',
-                }
-            )
-        else:
-            cliente, _ = Cliente.objects.get_or_create(
-                nombre=nombre_cliente,
-                defaults={
-                    'correo': f'{user.username}@example.com',
-                    'direccion': '',
-                    'telefono': '',
-                }
-            )
+        correo = user.email or f'{user.username}@example.com'
+        
+        cliente, _ = Cliente.objects.get_or_create(
+            usuario=user,
+            defaults={
+                'nombre': nombre_cliente,
+                'correo': correo,
+                'direccion': '',
+                'telefono': '',
+            }
+        )
+        
+        # Actualiza datos si cambiaron en el usuario
+        if cliente.nombre != nombre_cliente or cliente.correo != correo:
+            cliente.nombre = nombre_cliente
+            cliente.correo = correo
+            cliente.save()
+        
         return cliente
 
 class PedidoUpdateView(StaffRequiredMixin, UpdateView):
@@ -253,6 +257,15 @@ class PedidoDeleteView(StaffRequiredMixin, DeleteView):
     model = Pedido
     template_name = 'pedidos/pedidos/confirmar_eliminar.html'
     success_url = reverse_lazy('pedido-list')
+
+    def delete(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        try:
+            response = super().delete(request, *args, **kwargs)
+            messages.success(request, 'Pedido eliminado.')
+            return response
+        except ProtectedError:
+            return render(request, 'protected_error.html', {'object_type': 'pedido'}, status=400)
 
     def form_valid(self, form):
         messages.success(self.request, 'Pedido eliminado.')
@@ -329,6 +342,11 @@ class DashboardView(LoginRequiredMixin, View):
         return render(request, self.template_name, context)
 
 
+def handler_403(request, exception=None):
+    """Maneja errores 403 Forbidden con una página estilizada."""
+    return render(request, '403.html', status=403)
+
+
 # ── REGISTRO ──────────────────────────────────────────────────────────
 class RegistroView(View):
     template_name = 'pedidos/registro.html'
@@ -341,6 +359,22 @@ class RegistroView(View):
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             user = form.save()
+            
+            # Extrae teléfono y dirección del formulario
+            telefono = form.cleaned_data.get('telefono', '')
+            direccion = form.cleaned_data.get('direccion', '')
+            
+            # Crea el cliente vinculado al usuario (por email)
+            nombre_cliente = user.get_full_name() or user.username
+            Cliente.objects.get_or_create(
+                correo=user.email,
+                defaults={
+                    'nombre': nombre_cliente,
+                    'telefono': telefono,
+                    'direccion': direccion,
+                }
+            )
+            
             login(request, user)
             messages.success(request, 'Cuenta creada correctamente. Bienvenido.')
             return redirect('dashboard')
