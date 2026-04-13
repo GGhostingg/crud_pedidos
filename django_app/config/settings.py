@@ -83,8 +83,8 @@ STATIC_URL = '/static/'
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
 
-# Sesión expira en 60 segundos (1 minuto)
-SESSION_COOKIE_AGE = 60
+# Sesión expira en 120 segundos (2 minutos)
+SESSION_COOKIE_AGE = 120
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False   # False → el navegador respeta Max-Age
 SESSION_SAVE_EVERY_REQUEST = False         # False → el timer no se resetea en cada request
 

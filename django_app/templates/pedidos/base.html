@@ -606,7 +606,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 <script>
 (function () {
-    var SESSION_SECONDS = 60;   /* debe coincidir con SESSION_COOKIE_AGE en settings.py */
+    var SESSION_SECONDS = 120;   /* debe coincidir con SESSION_COOKIE_AGE en settings.py */
     var WARNING_BEFORE  = 15;   /* segundos antes de expirar en que aparece la alerta flotante */
     var RENEW_URL  = '{% url "renovar-sesion" %}';
     var CSRF_TOKEN = '{{ csrf_token }}';
