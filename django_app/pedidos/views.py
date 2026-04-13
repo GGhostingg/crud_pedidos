@@ -188,9 +188,12 @@ class PedidoCreateView(LoginRequiredMixin, CreateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        products = Producto.objects.filter(stock__gt=0).values('id', 'nombre', 'precio', 'stock')
-        context['product_prices_json'] = json.dumps({str(p['id']): float(p['precio']) for p in products})
-        context['product_list'] = products
+        products = list(Producto.objects.filter(stock__gt=0).values('id', 'nombre', 'precio', 'stock'))
+        # Convertir Decimal a float para serializacion JSON
+        for p in products:
+            p['precio'] = float(p['precio'])
+        context['product_prices_json'] = json.dumps({str(p['id']): p['precio'] for p in products})
+        context['product_list'] = json.dumps(products)
 
         if self.request.POST:
             context['detalles_formset'] = DetallePedidoFormSet(self.request.POST, prefix='detalles')
