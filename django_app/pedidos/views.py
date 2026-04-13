@@ -200,14 +200,20 @@ class PedidoCreateView(LoginRequiredMixin, CreateView):
         else:
             context['detalles_formset'] = DetallePedidoFormSet(prefix='detalles')
 
+        return context
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
         if not self.request.user.is_staff:
-            form = context.get('form')
-            if form and 'cliente' in form.fields:
-                form.fields.pop('cliente', None)
-            if form and 'estado' in form.fields:
+            # Ocultar cliente y estado pero mantenerlos en el form para validacion
+            cliente = self.get_cliente_for_user(self.request.user)
+            if 'cliente' in form.fields:
+                form.fields['cliente'].initial = cliente.pk
+                form.fields['cliente'].widget = forms.HiddenInput()
+            if 'estado' in form.fields:
                 form.fields['estado'].initial = 'Pendiente'
                 form.fields['estado'].widget = forms.HiddenInput()
-        return context
+        return form
 
     @transaction.atomic
     def form_valid(self, form):
@@ -246,9 +252,6 @@ class PedidoCreateView(LoginRequiredMixin, CreateView):
             return self.form_invalid(form)
 
         # Guardar pedido
-        if not self.request.user.is_staff:
-            form.instance.cliente = self.get_cliente_for_user(self.request.user)
-            form.instance.estado = 'Pendiente'
         form.instance.usuario = self.request.user
         self.object = form.save()
 
