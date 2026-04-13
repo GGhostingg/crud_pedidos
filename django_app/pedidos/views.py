@@ -80,14 +80,15 @@ class ClienteDeleteView(StaffRequiredMixin, DeleteView):
     template_name = 'pedidos/clientes/confirmar_eliminar.html'
     success_url = reverse_lazy('cliente-list')
 
-    def delete(self, request, *args, **kwargs):
+    def form_valid(self, form):
         self.object = self.get_object()
         try:
-            self.object.delete()
-            messages.success(request, 'Cliente eliminado.')
-            return redirect(self.success_url)
+            response = super().form_valid(form)
+            messages.success(self.request, 'Cliente eliminado.')
+            return response
         except (ProtectedError, IntegrityError):
-            return render(request, 'protected_error.html', {'object_type': 'cliente'}, status=400)
+            return render(self.request, 'protected_error.html',
+                          {'object_type': 'cliente'}, status=400)
 
 
 # ── PRODUCTOS ─────────────────────────────────────────────────────────
@@ -123,14 +124,15 @@ class ProductoDeleteView(StaffRequiredMixin, DeleteView):
     template_name = 'pedidos/productos/confirmar_eliminar.html'
     success_url = reverse_lazy('producto-list')
 
-    def delete(self, request, *args, **kwargs):
+    def form_valid(self, form):
         self.object = self.get_object()
         try:
-            self.object.delete()
-            messages.success(request, 'Producto eliminado.')
-            return redirect(self.success_url)
+            response = super().form_valid(form)
+            messages.success(self.request, 'Producto eliminado.')
+            return response
         except (ProtectedError, IntegrityError):
-            return render(request, 'protected_error.html', {'object_type': 'producto'}, status=400)
+            return render(self.request, 'protected_error.html',
+                          {'object_type': 'producto'}, status=400)
 
 
 
@@ -258,18 +260,15 @@ class PedidoDeleteView(StaffRequiredMixin, DeleteView):
     template_name = 'pedidos/pedidos/confirmar_eliminar.html'
     success_url = reverse_lazy('pedido-list')
 
-    def delete(self, request, *args, **kwargs):
+    def form_valid(self, form):
         self.object = self.get_object()
         try:
-            self.object.delete()
-            messages.success(request, 'Pedido eliminado.')
-            return redirect(self.success_url)
+            response = super().form_valid(form)
+            messages.success(self.request, 'Pedido eliminado.')
+            return response
         except (ProtectedError, IntegrityError):
-            return render(request, 'protected_error.html', {'object_type': 'pedido'}, status=400)
-
-    def form_valid(self, form):
-        messages.success(self.request, 'Pedido eliminado.')
-        return super().form_valid(form)
+            return render(self.request, 'protected_error.html',
+                          {'object_type': 'pedido'}, status=400)
 
 class AnularPedidoView(LoginRequiredMixin, View):
     template_name = 'pedidos/pedidos/confirmar_anular.html'
