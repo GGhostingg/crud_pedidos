@@ -205,13 +205,24 @@
 
     function removeRow(btn) {
         var row = btn.closest('.detalle-row');
-        // Disable inputs so Django doesn't receive them
-        row.querySelectorAll('select, input').forEach(function(el) {
-            el.disabled = true;
-        });
-        row.style.display = 'none';
+        row.remove();
+        // Reindexar todas las filas para mantener coherencia con management form
+        reindexRows();
         updateTotal();
         toggleDeleteButtons();
+    }
+
+    function reindexRows() {
+        var rows = tbody.querySelectorAll('.detalle-row');
+        rows.forEach(function(row, i) {
+            row.querySelectorAll('select, input').forEach(function(el) {
+                // Actualizar nombres
+                el.name = el.name.replace(/detalles-\d+/, 'detalles-' + i);
+                // Actualizar ids
+                if (el.id) el.id = el.id.replace(/detalles-\d+/, 'detalles-' + i);
+            });
+        });
+        totalFormsInput.value = rows.length;
     }
 
     function bindRowEvents(row) {

@@ -214,24 +214,35 @@ class PedidoCreateView(LoginRequiredMixin, CreateView):
         context = self.get_context_data()
         detalles_formset = context['detalles_formset']
 
-        if not detalles_formset.is_valid():
-            return self.form_invalid(form)
+        # Llamar is_valid() para poblar cleaned_data de cada formulario
+        # Ignoramos el resultado porque manejamos la validacion manualmente
+        detalles_formset.is_valid()
 
-        # Validar stock de todos los detalles antes de guardar
+        detalles_validos = []
         for det_form in detalles_formset:
-            if det_form.cleaned_data and not det_form.cleaned_data.get('DELETE', False):
-                producto = det_form.cleaned_data['producto']
-                cantidad = det_form.cleaned_data['cantidad']
-                if producto.stock < cantidad:
-                    messages.error(self.request,
-                        f'Stock insuficiente para "{producto.nombre}". Disponible: {producto.stock}')
-                    return self.form_invalid(form)
+            # Formularios sin cleaned_data = vacios o con errores de campos requeridos
+            if not det_form.cleaned_data:
+                continue
+            
+            if det_form.cleaned_data.get('DELETE', False):
+                continue
+                
+            producto = det_form.cleaned_data.get('producto')
+            cantidad = det_form.cleaned_data.get('cantidad')
+            
+            if not producto or not cantidad:
+                continue
+            
+            # Validar stock
+            if producto.stock < cantidad:
+                messages.error(self.request,
+                    f'Stock insuficiente para "{producto.nombre}". Disponible: {producto.stock}')
+                return self.form_invalid(form)
+            
+            detalles_validos.append(det_form)
 
-        # Verificar que haya al menos un detalle
-        detalles_validos = [f for f in detalles_formset
-                           if f.cleaned_data and not f.cleaned_data.get('DELETE', False)]
         if not detalles_validos:
-            messages.error(self.request, 'Debes agregar al menos un producto al pedido.')
+            messages.error(self.request, 'Debes seleccionar al menos un producto.')
             return self.form_invalid(form)
 
         # Guardar pedido
@@ -242,17 +253,16 @@ class PedidoCreateView(LoginRequiredMixin, CreateView):
         self.object = form.save()
 
         # Guardar detalles y descontar stock
-        for det_form in detalles_formset:
-            if det_form.cleaned_data and not det_form.cleaned_data.get('DELETE', False):
-                producto = det_form.cleaned_data['producto']
-                cantidad = det_form.cleaned_data['cantidad']
-                DetallePedido.objects.create(
-                    pedido=self.object,
-                    producto=producto,
-                    cantidad=cantidad
-                )
-                producto.stock -= cantidad
-                producto.save()
+        for det_form in detalles_validos:
+            producto = det_form.cleaned_data['producto']
+            cantidad = det_form.cleaned_data['cantidad']
+            DetallePedido.objects.create(
+                pedido=self.object,
+                producto=producto,
+                cantidad=cantidad
+            )
+            producto.stock -= cantidad
+            producto.save()
 
         messages.success(self.request, 'Pedido creado exitosamente.')
         return redirect(self.get_success_url())
