@@ -16,7 +16,8 @@ def registrar(datos: schemas.UsuarioCreate, db: Session = Depends(get_db)):
     nuevo = models.Usuario(
         username=datos.username,
         email=datos.email,
-        hashed_password=auth.get_password_hash(datos.password)
+        hashed_password=auth.get_password_hash(datos.password),
+        is_staff=datos.is_staff,
     )
     db.add(nuevo); db.commit(); db.refresh(nuevo)
     return {'mensaje': 'Usuario creado', 'username': nuevo.username}

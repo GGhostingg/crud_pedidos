@@ -16,15 +16,13 @@
         Datos del Pedido
     </div>
     <div class="card-body">
-        {% if 'cliente' not in form.fields %}
-        <div class="alert alert-secondary mb-4">
-            <i class="bi bi-info-circle" style="flex-shrink:0;"></i>
-            <span>El pedido se registrará con tu cuenta y se asociará automáticamente a tu perfil de cliente.</span>
-        </div>
-        {% endif %}
-
         <form method="post" id="pedido-form">
             {% csrf_token %}
+
+            {# Campos ocultos ocultos (cliente y estado para usuarios normales) #}
+            {% for field in form.hidden_fields %}
+                {{ field }}
+            {% endfor %}
 
             {% if form.non_field_errors %}
             <div class="alert alert-danger">
@@ -32,20 +30,37 @@
             </div>
             {% endif %}
 
-            {% if 'cliente' in form.fields %}
+            {% if object and object.cliente %}
             <div class="mb-3">
-                <label for="{{ form.cliente.id_for_label }}" class="form-label">Cliente</label>
-                {{ form.cliente }}
-                {% for error in form.cliente.errors %}
-                    <div class="form-text text-danger">{{ error }}</div>
-                {% endfor %}
+                <label class="form-label">Cliente</label>
+                <div class="form-control-plaintext">{{ object.cliente.nombre }}</div>
             </div>
+            {% elif not object %}
+                {% if request.user.is_staff %}
+                <div class="mb-3">
+                    <label for="{{ form.cliente.id_for_label }}" class="form-label">Cliente</label>
+                    {{ form.cliente }}
+                    {% for error in form.cliente.errors %}
+                        <div class="form-text text-danger">{{ error }}</div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="alert alert-secondary mb-4">
+                    <i class="bi bi-info-circle" style="flex-shrink:0;"></i>
+                    <span>El pedido se registrará con tu cuenta y se asociará automáticamente a tu perfil de cliente.</span>
+                </div>
+                {% endif %}
             {% endif %}
 
             {% if 'estado' in form.fields %}
             <div class="mb-3">
                 <label for="{{ form.estado.id_for_label }}" class="form-label">Estado</label>
-                {{ form.estado }}
+                {% if request.user.is_staff %}
+                    {{ form.estado }}
+                {% else %}
+                    <p class="form-control-plaintext fw-bold">{{ object.estado|default:'Pendiente' }}</p>
+                    <input type="hidden" name="estado" value="{{ object.estado|default:'Pendiente' }}">
+                {% endif %}
                 {% for error in form.estado.errors %}
                     <div class="form-text text-danger">{{ error }}</div>
                 {% endfor %}
@@ -54,6 +69,8 @@
 
             <!-- Sección de detalles -->
             <div class="mt-4 mb-3">
+                {% with post_estado=request.POST.estado|default:'' %}
+                {% if object.estado == 'Pendiente' or post_estado == 'Pendiente' or not object %}
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h5 class="mb-0"><i class="bi bi-box-seam me-1"></i> Productos del pedido</h5>
                     <button type="button" id="add-row" class="btn btn-sm btn-outline-primary">
@@ -92,6 +109,51 @@
                         </tfoot>
                     </table>
                 </div>
+                {% else %}
+                <!-- Solo lectura: productos del pedido -->
+                <h5 class="mb-3"><i class="bi bi-box-seam me-1"></i> Productos del pedido</h5>
+                <div class="alert alert-info mb-0">
+                    <i class="bi bi-lock" style="flex-shrink:0;"></i>
+                    <span>Este pedido ya no está en estado Pendiente, por lo que los productos no se pueden modificar. Solo se permite cambiar el <strong>estado</strong>.</span>
+                </div>
+
+                <!-- Management form es obligatorio para evitar errores de ManagementForm al hacer POST -->
+                {{ detalles_formset.management_form }}
+
+                <div class="table-responsive mt-3">
+                    <table class="table table-bordered align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Producto</th>
+                                <th>Precio unit.</th>
+                                <th>Cantidad</th>
+                                <th>Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for detalle in object.detalles.all %}
+                            <tr>
+                                <td>{{ detalle.producto.nombre }}</td>
+                                <td>${{ detalle.producto.precio|floatformat:2 }}</td>
+                                <td>{{ detalle.cantidad }}</td>
+                                <td class="fw-bold">${{ detalle.subtotal|floatformat:2 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-center text-muted">Sin productos</td></tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="3" class="text-end fw-bold">Total del pedido:</td>
+                                <td class="fw-bold fs-5" style="color:var(--primary);">
+                                    ${{ pedido_total|floatformat:2 }}
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                {% endif %}
+                {% endwith %}
             </div>
 
             <div style="display:flex; gap:.5rem; margin-top:1.25rem;">
@@ -108,7 +170,12 @@
 
 <script>
 (function () {
+    var tbody = document.getElementById('detalles-tbody');
+    // Si no hay tbody (pedido no pendiente), no ejecutar el editor de productos
+    if (!tbody) return;
+
     var productData = {{ product_list|default:'[]'|safe }};
+    var existingDetails = {{ existing_details_json|default:'[]'|safe }};
     var prices = {};
     var stock = {};
 
@@ -120,7 +187,6 @@
         optionsHtml += '<option value="' + p.id + '">' + p.nombre + ' — $' + parseFloat(p.precio).toFixed(2) + ' (Stock: ' + p.stock + ')</option>';
     });
 
-    var tbody = document.getElementById('detalles-tbody');
     var totalDisplay = document.getElementById('pedido-total');
     var addBtn = document.getElementById('add-row');
     var totalFormsInput = document.getElementById('id_detalles-TOTAL_FORMS');
@@ -131,7 +197,9 @@
         return '$' + Number(v).toFixed(2);
     }
 
-    function createRowHtml(index) {
+    function createRowHtml(index, selectedProductId, qty) {
+        selectedProductId = selectedProductId || '';
+        qty = qty || 1;
         return '<tr class="detalle-row">' +
             '<td>' +
                 '<select name="detalles-' + index + '-producto" class="form-select detalle-producto" id="id_detalles-' + index + '-producto">' +
@@ -141,7 +209,7 @@
             '<td><span class="detalle-precio">—</span></td>' +
             '<td><span class="detalle-stock">—</span></td>' +
             '<td>' +
-                '<input type="number" name="detalles-' + index + '-cantidad" class="form-control detalle-cantidad" id="id_detalles-' + index + '-cantidad" value="1" min="1">' +
+                '<input type="number" name="detalles-' + index + '-cantidad" class="form-control detalle-cantidad" id="id_detalles-' + index + '-cantidad" value="' + qty + '" min="1">' +
             '</td>' +
             '<td><span class="detalle-subtotal fw-bold">—</span></td>' +
             '<td class="text-center">' +
@@ -190,10 +258,16 @@
         totalDisplay.textContent = total > 0 ? formatMoney(total) : '—';
     }
 
-    function addRow() {
+    function addRow(selectedProductId, qty) {
         var index = formCount;
-        tbody.insertAdjacentHTML('beforeend', createRowHtml(index));
+        tbody.insertAdjacentHTML('beforeend', createRowHtml(index, selectedProductId, qty));
         var newRow = tbody.lastElementChild;
+
+        // Set selected product if provided
+        if (selectedProductId) {
+            var select = newRow.querySelector('.detalle-producto');
+            if (select) select.value = selectedProductId;
+        }
 
         bindRowEvents(newRow);
         updateRow(newRow);
@@ -245,8 +319,14 @@
         });
     }
 
-    // Crear primera fila
-    addRow();
+    // Load existing details if editing, otherwise create empty row
+    if (existingDetails.length > 0) {
+        existingDetails.forEach(function(det) {
+            addRow(String(det.producto_id), det.cantidad);
+        });
+    } else {
+        addRow();
+    }
 
     // Boton agregar
     if (addBtn) addBtn.addEventListener('click', function(e) {

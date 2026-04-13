@@ -71,15 +71,84 @@ class CustomUserCreationForm(UserCreationForm):
 
     def clean_nombre_completo(self):
         nombre = self.cleaned_data.get('nombre_completo')
-        if nombre and len(nombre.strip()) < 3:
+
+        if not nombre:
+            raise ValidationError('El nombre es obligatorio.')
+
+        nombre = nombre.strip()
+
+        if len(nombre) < 3:
             raise ValidationError('El nombre debe tener al menos 3 caracteres.')
-        return nombre.strip()
+
+        if len(nombre) > 150:
+            raise ValidationError('El nombre no puede tener más de 150 caracteres.')
+
+        # Validar que no contenga números
+        if re.search(r'\d', nombre):
+            raise ValidationError('El nombre no puede contener números.')
+
+        # Validar que no contenga caracteres especiales inválidos
+        # Solo se permiten letras, espacios, acentos, ñ, y apóstrofes/guiones en nombres compuestos
+        if not re.match(r"^[A-Za-záéíóúÁÉÍÓÚñÑüÜ\s'\-]+$", nombre):
+            raise ValidationError('El nombre solo puede contener letras, espacios y caracteres válidos (acentos, ñ, guiones).')
+
+        # Validar que tenga al menos una letra (no solo espacios)
+        if not re.search(r'[A-Za-záéíóúÁÉÍÓÚñÑüÜ]', nombre):
+            raise ValidationError('El nombre debe contener al menos una letra.')
+
+        # Validar que no sea solo espacios repetidos
+        if not nombre or len(nombre.replace(' ', '')) < 3:
+            raise ValidationError('El nombre debe tener al menos 3 caracteres (sin contar espacios).')
+
+        # Validar que cada palabra tenga al menos 2 caracteres (evitar "a b c")
+        palabras = nombre.split()
+        for palabra in palabras:
+            if len(palabra) < 2:
+                raise ValidationError(f'Cada palabra del nombre debe tener al menos 2 caracteres. "{palabra}" es demasiado corta.')
+
+        return nombre
+
+    def clean_telefono(self):
+        telefono = self.cleaned_data.get('telefono', '').strip()
+
+        if not telefono:
+            return telefono
+
+        # Validar que solo contenga dígitos, espacios, guiones, paréntesis y signo +
+        if not re.match(r'^[\d\s\-\(\)\+]+$', telefono):
+            raise forms.ValidationError('El teléfono solo puede contener números, espacios, guiones y paréntesis.')
+
+        # Extraer solo los dígitos para contar
+        solo_digitos = re.sub(r'[^\d]', '', telefono)
+
+        if len(solo_digitos) < 7:
+            raise forms.ValidationError('El teléfono debe tener al menos 7 dígitos.')
+
+        if len(solo_digitos) > 10:
+            raise forms.ValidationError('El teléfono no puede tener más de 10 dígitos.')
+
+        return telefono
+
+    def clean_direccion(self):
+        direccion = self.cleaned_data.get('direccion', '').strip()
+
+        if not direccion:
+            return direccion
+
+        if len(direccion) > 200:
+            raise forms.ValidationError('La dirección no puede tener más de 200 caracteres.')
+
+        # Validar que no contenga caracteres potencialmente peligrosos (prevención XSS)
+        if re.search(r'[<>"\';/]', direccion):
+            raise forms.ValidationError('La dirección contiene caracteres no permitidos.')
+
+        return direccion
 
     def save(self, commit=True):
         user = super().save(commit=False)
-        # Generar username unico a partir del email (sin espacios, sin @)
+        # Generar username único a partir del email
         email_prefix = self.cleaned_data['email'].split('@')[0]
-        base_username = re.sub(r'[^A-Za-z0-9_.]', '', email_prefix)
+        base_username = re.sub(r'[^A-Za-z0-9_.]', '', email_prefix).lower()
         username = base_username
         counter = 1
         while User.objects.filter(username=username).exists():
@@ -124,6 +193,80 @@ class ClienteForm(forms.ModelForm):
             raise forms.ValidationError('Este correo ya está registrado para otro cliente.')
         return correo
 
+    def clean_nombre(self):
+        nombre = self.cleaned_data.get('nombre')
+
+        if not nombre:
+            raise forms.ValidationError('El nombre es obligatorio.')
+
+        nombre = nombre.strip()
+
+        if len(nombre) < 3:
+            raise forms.ValidationError('El nombre debe tener al menos 3 caracteres.')
+
+        if len(nombre) > 100:
+            raise forms.ValidationError('El nombre no puede tener más de 100 caracteres.')
+
+        # Validar que no contenga números
+        if re.search(r'\d', nombre):
+            raise forms.ValidationError('El nombre no puede contener números.')
+
+        # Validar que no contenga caracteres especiales inválidos
+        if not re.match(r"^[A-Za-záéíóúÁÉÍÓÚñÑüÜ\s'\-]+$", nombre):
+            raise forms.ValidationError('El nombre solo puede contener letras, espacios y caracteres válidos (acentos, ñ, guiones).')
+
+        # Validar que tenga al menos una letra
+        if not re.search(r'[A-Za-záéíóúÁÉÍÓÚñÑüÜ]', nombre):
+            raise forms.ValidationError('El nombre debe contener al menos una letra.')
+
+        # Validar que no sea solo espacios repetidos
+        if not nombre or len(nombre.replace(' ', '')) < 3:
+            raise forms.ValidationError('El nombre debe tener al menos 3 caracteres (sin contar espacios).')
+
+        # Validar que cada palabra tenga al menos 2 caracteres
+        palabras = nombre.split()
+        for palabra in palabras:
+            if len(palabra) < 2:
+                raise forms.ValidationError(f'Cada palabra del nombre debe tener al menos 2 caracteres. "{palabra}" es demasiado corta.')
+
+        return nombre
+
+    def clean_telefono(self):
+        telefono = self.cleaned_data.get('telefono', '').strip()
+
+        if not telefono:
+            return telefono
+
+        # Validar que solo contenga dígitos, espacios, guiones, paréntesis y signo +
+        if not re.match(r'^[\d\s\-\(\)\+]+$', telefono):
+            raise forms.ValidationError('El teléfono solo puede contener números, espacios, guiones y paréntesis.')
+
+        # Extraer solo los dígitos para contar
+        solo_digitos = re.sub(r'[^\d]', '', telefono)
+
+        if len(solo_digitos) < 7:
+            raise forms.ValidationError('El teléfono debe tener al menos 7 dígitos.')
+
+        if len(solo_digitos) > 15:
+            raise forms.ValidationError('El teléfono no puede tener más de 15 dígitos.')
+
+        return telefono
+
+    def clean_direccion(self):
+        direccion = self.cleaned_data.get('direccion', '').strip()
+
+        if not direccion:
+            return direccion
+
+        if len(direccion) > 200:
+            raise forms.ValidationError('La dirección no puede tener más de 200 caracteres.')
+
+        # Validar que no contenga caracteres potencialmente peligrosos (prevención XSS)
+        if re.search(r'[<>"\';/]', direccion):
+            raise forms.ValidationError('La dirección contiene caracteres no permitidos.')
+
+        return direccion
+
 class ProductoForm(forms.ModelForm):
     class Meta:
         model = Producto
@@ -155,6 +298,27 @@ class ProductoForm(forms.ModelForm):
         if stock is not None and stock < 0:
             raise forms.ValidationError('El stock no puede ser negativo.')
         return stock
+
+    def clean_nombre(self):
+        nombre = self.cleaned_data.get('nombre')
+
+        if not nombre:
+            raise forms.ValidationError('El nombre es obligatorio.')
+
+        nombre = nombre.strip()
+
+        if len(nombre) < 3:
+            raise forms.ValidationError('El nombre debe tener al menos 3 caracteres.')
+
+        if len(nombre) > 100:
+            raise forms.ValidationError('El nombre no puede tener más de 100 caracteres.')
+
+        # Validar que no contenga números (opcional para productos, pero útil)
+        # Se permiten números en nombres de productos (ej: "iPhone 15"), así que solo validamos caracteres peligrosos
+        if re.search(r'[<>"\';/]', nombre):
+            raise forms.ValidationError('El nombre contiene caracteres no permitidos.')
+
+        return nombre
 
 
 class DetallePedidoForm(forms.Form):
@@ -208,14 +372,13 @@ class PedidoForm(forms.ModelForm):
 
 class CustomAuthenticationForm(AuthenticationForm):
     error_messages = {
-        'invalid_login': 'Usuario o contraseña incorrectos.',
+        'invalid_login': 'Correo o contraseña incorrectos.',
         'inactive': 'Esta cuenta no está activa.',
     }
     username = forms.CharField(
-        label='Usuario',
+        label='Correo electrónico',
         strip=False,
-        help_text='Puede incluir espacios y los símbolos @ . + - _',
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Usuario'})
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'correo@ejemplo.com'})
     )
     password = forms.CharField(
         label='Contraseña',
@@ -224,7 +387,21 @@ class CustomAuthenticationForm(AuthenticationForm):
     )
 
     def clean_username(self):
-        username = self.cleaned_data.get('username')
-        if username and not re.match(r'^[A-Za-z0-9 @.+_-]+$', username):
-            raise ValidationError('El usuario solo puede contener letras, números, espacios y @ . + - _')
-        return username
+        email = self.cleaned_data.get('username')
+        if email:
+            # Validate email format
+            try:
+                from django.core.validators import validate_email
+                validate_email(email)
+            except Exception:
+                raise ValidationError('Introduce un correo electrónico válido.')
+        return email
+
+    def confirm_login_allowed(self, user):
+        # Authenticate by email: override username field with the user's actual username
+        # This is handled in the view, so we just check is_active
+        if not user.is_active:
+            raise forms.ValidationError(
+                self.error_messages.get('inactive', 'Esta cuenta no está activa.'),
+                code='inactive',
+            )

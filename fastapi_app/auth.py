@@ -62,6 +62,6 @@ def get_current_user_from_refresh(token: str, db: Session) -> models.Usuario:
     return user
 
 def get_current_admin(user: models.Usuario = Depends(get_current_user)) -> models.Usuario:
-    if user.role != 'admin':
+    if not user.is_staff:
         raise HTTPException(status_code=403, detail='No tienes permisos de administrador')
     return user

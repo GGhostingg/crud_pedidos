@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from fastapi_app.database import Base
@@ -9,7 +9,7 @@ class Usuario(Base):           # Tabla de usuarios FastAPI (para JWT)
     username = Column(String(50), unique=True)
     email = Column(String(100), unique=True)
     hashed_password = Column(String(255))
-    role = Column(String(20), default='user')  # 'admin' or 'user'
+    is_staff = Column(Boolean, default=False)  # Equivalente a is_staff de Django
 
 class Cliente(Base):           # Mismo nombre de tabla que Django: 'clientes'
     __tablename__ = 'clientes'

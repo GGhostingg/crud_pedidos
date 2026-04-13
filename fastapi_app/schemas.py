@@ -21,6 +21,7 @@ class UsuarioCreate(BaseModel):
     username: str
     email: EmailStr
     password: str
+    is_staff: bool = False
 
 class ClienteBase(BaseModel):
     nombre: str

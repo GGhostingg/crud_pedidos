@@ -108,9 +108,14 @@
                         </div>
                         {% else %}
                             {% if pedido.estado == 'Pendiente' %}
-                            <a href="{% url 'pedido-anular' pedido.pk %}" class="btn btn-sm btn-danger" title="Anular pedido">
-                                <i class="bi bi-x-circle"></i> Anular
-                            </a>
+                            <div style="display:flex; gap:.35rem;">
+                                <a href="{% url 'pedido-update' pedido.pk %}" class="btn btn-sm btn-warning" title="Editar pedido">
+                                    <i class="bi bi-pencil"></i> Editar
+                                </a>
+                                <a href="{% url 'pedido-anular' pedido.pk %}" class="btn btn-sm btn-danger" title="Anular pedido">
+                                    <i class="bi bi-x-circle"></i> Anular
+                                </a>
+                            </div>
                             {% endif %}
                         {% endif %}
                     </td>

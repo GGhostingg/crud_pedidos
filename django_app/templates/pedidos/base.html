@@ -460,6 +460,7 @@
                 <div class="sidebar-avatar">{{ display_name|first|upper }}</div>
                 <div style="overflow:hidden;">
                     <div class="sidebar-username">{{ display_name }}</div>
+                    <div class="sidebar-role" style="font-size:.62rem;">@{{ user.username }}</div>
                     <div class="sidebar-role">{% if user.is_staff %}Administrador{% else %}Usuario{% endif %}</div>
                 </div>
             </div>
@@ -485,7 +486,7 @@
                 {% if user.is_staff %}
                     <span class="topbar-badge badge-staff"><i class="bi bi-shield-check"></i> Administrador</span>
                 {% else %}
-                    <span class="topbar-badge badge-user"><i class="bi bi-person-check"></i> {{ display_name }}</span>
+                    <span class="topbar-badge badge-user"><i class="bi bi-person-check"></i> {{ display_name }} <span style="opacity:.6;">(@{{ user.username }})</span></span>
                 {% endif %}
             </div>
         </header>
@@ -610,7 +611,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var WARNING_BEFORE  = 15;   /* segundos antes de expirar en que aparece la alerta flotante */
     var RENEW_URL  = '{% url "renovar-sesion" %}';
     var CSRF_TOKEN = '{{ csrf_token }}';
-    var USERNAME   = '{{ display_name|escapejs }}';
+    var USERNAME   = '{{ user_username|escapejs }}';
 
     var warningEl     = document.getElementById('session-warning');
     var modalEl       = document.getElementById('session-modal');

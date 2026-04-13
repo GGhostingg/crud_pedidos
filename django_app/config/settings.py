@@ -83,11 +83,16 @@ STATIC_URL = '/static/'
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
 
+# Autenticación por correo electrónico
+AUTHENTICATION_BACKENDS = [
+    'pedidos.auth_backends.EmailBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
 # Sesión expira en 120 segundos (2 minutos)
 SESSION_COOKIE_AGE = 120
-SESSION_EXPIRE_AT_BROWSER_CLOSE = False   # False → el navegador respeta Max-Age
-SESSION_SAVE_EVERY_REQUEST = False         # False → el timer no se resetea en cada request
-
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False   # False → la sesión no expira al cerrar el navegador
+SESSION_SAVE_EVERY_REQUEST = True         # True → la sesión se renueva con cada solicitud, expira después de 120 segundos sin actividad
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
@@ -130,7 +135,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'es'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/Bogota'
+USE_TZ = True
 
 USE_I18N = True
 

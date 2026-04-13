@@ -18,6 +18,7 @@ class Cliente(models.Model):
     class Meta:
         db_table = 'clientes'       # Nombre real en MySQL
         verbose_name_plural = 'Clientes'
+        ordering = ['-id']
 
 
 class Producto(models.Model):
@@ -56,6 +57,7 @@ class Pedido(models.Model):
 
     class Meta:
         db_table = 'pedidos'
+        ordering = ['-id']
 
 
 class DetallePedido(models.Model):
