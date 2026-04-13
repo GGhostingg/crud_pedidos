@@ -358,22 +358,23 @@ class RegistroView(View):
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             user = form.save()
-            
-            # Extrae teléfono y dirección del formulario
+
+            # Extrae teléfono, dirección y nombre completo del formulario
             telefono = form.cleaned_data.get('telefono', '')
             direccion = form.cleaned_data.get('direccion', '')
-            
-            # Crea el cliente vinculado al usuario (por email)
-            nombre_cliente = user.get_full_name() or user.username
+            nombre_completo = form.cleaned_data.get('nombre_completo', '')
+
+            # Crea el cliente vinculado al usuario con el nombre completo real
             Cliente.objects.get_or_create(
                 correo=user.email,
                 defaults={
-                    'nombre': nombre_cliente,
+                    'nombre': nombre_completo or user.get_full_name() or user.username,
                     'telefono': telefono,
                     'direccion': direccion,
+                    'usuario': user,
                 }
             )
-            
+
             login(request, user)
             messages.success(request, 'Cuenta creada correctamente. Bienvenido.')
             return redirect('dashboard')

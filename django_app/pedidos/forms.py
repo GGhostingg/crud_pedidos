@@ -7,49 +7,40 @@ from django.core.exceptions import ValidationError
 from .models import Cliente, Producto, Pedido
 
 class CustomUserCreationForm(UserCreationForm):
-    username = forms.CharField(
-        label='Usuario',
+    nombre_completo = forms.CharField(
+        label='Nombre completo',
         max_length=150,
-        strip=True,
-        validators=[],
-        help_text='Puede incluir espacios y los símbolos @ . + - _',
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Ingrese su usuario'
+            'placeholder': 'Ej: Julieta Meza'
         }),
         error_messages={
-            'required': 'El usuario es obligatorio.',
-            'invalid': 'El usuario solo puede contener letras, números, espacios y @ . + - _'
+            'required': 'El nombre es obligatorio.',
         }
     )
 
-    def clean_username(self):
-        username = self.cleaned_data.get('username')
-        if username:
-            if not re.match(r'^[A-Za-z0-9 @.+_-]+$', username):
-                raise ValidationError('El usuario solo puede contener letras, números, espacios y @ . + - _')
-        return username
-
-    def _post_clean(self):
-        super()._post_clean()
-        # Django's UnicodeUsernameValidator (del modelo User) rechaza espacios,
-        # pero nuestra clean_username ya los validó. Si clean_username pasó
-        # eliminamos el error que el modelo haya añadido para username.
-        if 'username' in self._errors and self.cleaned_data.get('username'):
-            self._errors.pop('username', None)
-
-    email = forms.EmailField(
-        required=True,
-        label='Correo electrónico',
-        widget=forms.EmailInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'correo@ejemplo.com'
-        }),
-        error_messages={
-            'required': 'El correo es obligatorio.',
-            'invalid': 'Introduce un correo válido.'
+    class Meta:
+        model = User
+        fields = ['nombre_completo', 'email', 'password1', 'password2']
+        labels = {
+            'email': 'Correo electrónico',
+            'password1': 'Contraseña',
+            'password2': 'Confirmar contraseña',
         }
-    )
+        widgets = {
+            'email': forms.EmailInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'correo@ejemplo.com'
+            }),
+            'password1': forms.PasswordInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ingrese su contraseña'
+            }),
+            'password2': forms.PasswordInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Confirma la contraseña'
+            }),
+        }
 
     telefono = forms.CharField(
         required=False,
@@ -71,34 +62,35 @@ class CustomUserCreationForm(UserCreationForm):
         })
     )
 
-    class Meta:
-        model = User
-        fields = ['username', 'email', 'password1', 'password2']
-        labels = {
-            'username': 'Usuario',
-            'password1': 'Contraseña',
-            'password2': 'Confirmar contraseña',
-        }
-        widgets = {
-            'username': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Ingrese su usuario'
-            }),
-            'password1': forms.PasswordInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Ingrese su contraseña'
-            }),
-            'password2': forms.PasswordInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Confirma la contraseña'
-            }),
-        }
-
     def clean_email(self):
         email = self.cleaned_data.get('email')
         if User.objects.filter(email=email).exists():
             raise forms.ValidationError('Este correo ya está registrado.')
         return email
+
+    def clean_nombre_completo(self):
+        nombre = self.cleaned_data.get('nombre_completo')
+        if nombre and len(nombre.strip()) < 3:
+            raise ValidationError('El nombre debe tener al menos 3 caracteres.')
+        return nombre.strip()
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        # Generar username unico a partir del email (sin espacios, sin @)
+        email_prefix = self.cleaned_data['email'].split('@')[0]
+        base_username = re.sub(r'[^A-Za-z0-9_.]', '', email_prefix)
+        username = base_username
+        counter = 1
+        while User.objects.filter(username=username).exists():
+            username = f'{base_username}{counter}'
+            counter += 1
+        user.username = username
+        user.set_password(self.cleaned_data["password1"])
+        user.first_name = self.cleaned_data.get('nombre_completo', '').split()[0] if self.cleaned_data.get('nombre_completo') else ''
+        user.last_name = ' '.join(self.cleaned_data.get('nombre_completo', '').split()[1:]) if self.cleaned_data.get('nombre_completo') else ''
+        if commit:
+            user.save()
+        return user
 
 class ClienteForm(forms.ModelForm):
     class Meta:
