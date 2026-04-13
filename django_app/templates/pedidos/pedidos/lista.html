@@ -96,9 +96,15 @@
                             <a href="{% url 'pedido-update' pedido.pk %}" class="btn btn-sm btn-warning" title="Editar">
                                 <i class="bi bi-pencil"></i>
                             </a>
+                            {% if pedido.detalles.count == 0 %}
                             <a href="{% url 'pedido-delete' pedido.pk %}" class="btn btn-sm btn-danger" title="Eliminar">
                                 <i class="bi bi-trash"></i>
                             </a>
+                            {% else %}
+                            <button class="btn btn-sm btn-danger" disabled title="No se puede eliminar: tiene detalles" style="opacity:.5; cursor:not-allowed;">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            {% endif %}
                         </div>
                         {% else %}
                             {% if pedido.estado == 'Pendiente' %}
