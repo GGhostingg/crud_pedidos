@@ -18,7 +18,7 @@ from django.contrib.auth.forms import AuthenticationForm
 import json
 from django.http import JsonResponse
 from .models import Cliente, Producto, Pedido, DetallePedido
-from .forms import CustomAuthenticationForm, CustomUserCreationForm, ClienteForm, ProductoForm, PedidoForm, PedidoCreateForm
+from .forms import CustomAuthenticationForm, CustomUserCreationForm, ClienteForm, ProductoForm, PedidoForm, PedidoCreateForm, DetallePedidoFormSet
 
 class StaffRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
     raise_exception = True
@@ -186,39 +186,71 @@ class PedidoCreateView(LoginRequiredMixin, CreateView):
     template_name = 'pedidos/pedidos/formulario.html'
     success_url = reverse_lazy('pedido-list')
 
-    def get_form(self, form_class=None):
-        form = super().get_form(form_class)
-        if not self.request.user.is_staff:
-            form.fields.pop('cliente', None)
-            form.fields['estado'].initial = 'Pendiente'
-            form.fields['estado'].widget = forms.HiddenInput()
-        return form
-
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        products = Producto.objects.filter(stock__gt=0).values('id', 'precio')
+        products = Producto.objects.filter(stock__gt=0).values('id', 'nombre', 'precio', 'stock')
         context['product_prices_json'] = json.dumps({str(p['id']): float(p['precio']) for p in products})
+        context['product_list'] = products
+
+        if self.request.POST:
+            context['detalles_formset'] = DetallePedidoFormSet(self.request.POST, prefix='detalles')
+        else:
+            context['detalles_formset'] = DetallePedidoFormSet(prefix='detalles')
+
+        if not self.request.user.is_staff:
+            form = context.get('form')
+            if form and 'cliente' in form.fields:
+                form.fields.pop('cliente', None)
+            if form and 'estado' in form.fields:
+                form.fields['estado'].initial = 'Pendiente'
+                form.fields['estado'].widget = forms.HiddenInput()
         return context
 
     @transaction.atomic
     def form_valid(self, form):
-        producto = form.cleaned_data['producto']
-        cantidad = form.cleaned_data['cantidad']
-        if producto.stock < cantidad:
-            messages.error(self.request, f'Stock insuficiente. Disponible: {producto.stock}')
+        context = self.get_context_data()
+        detalles_formset = context['detalles_formset']
+
+        if not detalles_formset.is_valid():
             return self.form_invalid(form)
+
+        # Validar stock de todos los detalles antes de guardar
+        for det_form in detalles_formset:
+            if det_form.cleaned_data and not det_form.cleaned_data.get('DELETE', False):
+                producto = det_form.cleaned_data['producto']
+                cantidad = det_form.cleaned_data['cantidad']
+                if producto.stock < cantidad:
+                    messages.error(self.request,
+                        f'Stock insuficiente para "{producto.nombre}". Disponible: {producto.stock}')
+                    return self.form_invalid(form)
+
+        # Verificar que haya al menos un detalle
+        detalles_validos = [f for f in detalles_formset
+                           if f.cleaned_data and not f.cleaned_data.get('DELETE', False)]
+        if not detalles_validos:
+            messages.error(self.request, 'Debes agregar al menos un producto al pedido.')
+            return self.form_invalid(form)
+
+        # Guardar pedido
         if not self.request.user.is_staff:
             form.instance.cliente = self.get_cliente_for_user(self.request.user)
             form.instance.estado = 'Pendiente'
         form.instance.usuario = self.request.user
         self.object = form.save()
-        DetallePedido.objects.create(
-            pedido=self.object,
-            producto=producto,
-            cantidad=cantidad
-        )
-        producto.stock -= cantidad
-        producto.save()
+
+        # Guardar detalles y descontar stock
+        for det_form in detalles_formset:
+            if det_form.cleaned_data and not det_form.cleaned_data.get('DELETE', False):
+                producto = det_form.cleaned_data['producto']
+                cantidad = det_form.cleaned_data['cantidad']
+                DetallePedido.objects.create(
+                    pedido=self.object,
+                    producto=producto,
+                    cantidad=cantidad
+                )
+                producto.stock -= cantidad
+                producto.save()
+
         messages.success(self.request, 'Pedido creado exitosamente.')
         return redirect(self.get_success_url())
 

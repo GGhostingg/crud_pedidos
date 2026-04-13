@@ -1,6 +1,7 @@
 import re
 
 from django import forms
+from django.forms import formset_factory, BaseFormSet
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -155,19 +156,33 @@ class ProductoForm(forms.ModelForm):
             raise forms.ValidationError('El stock no puede ser negativo.')
         return stock
 
-class PedidoCreateForm(forms.ModelForm):
+
+class DetallePedidoForm(forms.Form):
+    """Un detalle individual dentro del formulario de pedido."""
     producto = forms.ModelChoiceField(
         queryset=Producto.objects.filter(stock__gt=0),
         label='Producto',
-        widget=forms.Select(attrs={'class': 'form-select'})
+        widget=forms.Select(attrs={'class': 'form-select detalle-producto'})
     )
     cantidad = forms.IntegerField(
         min_value=1,
         initial=1,
         label='Cantidad',
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'min': '1'})
+        widget=forms.NumberInput(attrs={'class': 'form-control detalle-cantidad', 'min': '1'})
     )
 
+
+# Formset para múltiples detalles de pedido
+DetallePedidoFormSet = formset_factory(
+    DetallePedidoForm,
+    extra=1,
+    can_delete=True,
+    min_num=1,
+    validate_min=True,
+)
+
+
+class PedidoCreateForm(forms.ModelForm):
     class Meta:
         model = Pedido
         fields = ['cliente', 'estado']
@@ -179,14 +194,6 @@ class PedidoCreateForm(forms.ModelForm):
             'cliente': forms.Select(attrs={'class': 'form-select'}),
             'estado': forms.Select(attrs={'class': 'form-select'}),
         }
-
-    def clean(self):
-        cleaned_data = super().clean()
-        producto = cleaned_data.get('producto')
-        cantidad = cleaned_data.get('cantidad')
-        if producto and cantidad and cantidad > producto.stock:
-            self.add_error('cantidad', 'No hay suficiente stock para este producto.')
-        return cleaned_data
 
 class PedidoForm(forms.ModelForm):
     class Meta:

@@ -6,7 +6,7 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">{% if object %}Editar Pedido{% else %}Nuevo Pedido{% endif %}</h1>
-        <p class="page-subtitle">{% if object %}Modifica los datos del pedido #{{ object.id }}{% else %}Registra un nuevo pedido en el sistema{% endif %}</p>
+        <p class="page-subtitle">{% if object %}Modifica los datos del pedido #{{ object.id }}{% else %}Registra un nuevo pedido con uno o más productos{% endif %}</p>
     </div>
 </div>
 
@@ -23,8 +23,15 @@
         </div>
         {% endif %}
 
-        <form method="post">
+        <form method="post" id="pedido-form">
             {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+            </div>
+            {% endif %}
+
             {% if 'cliente' in form.fields %}
             <div class="mb-3">
                 <label for="{{ form.cliente.id_for_label }}" class="form-label">Cliente</label>
@@ -34,33 +41,6 @@
                 {% endfor %}
             </div>
             {% endif %}
-
-            <div class="mb-3">
-                <label for="{{ form.producto.id_for_label }}" class="form-label">Producto</label>
-                {{ form.producto }}
-                {% for error in form.producto.errors %}
-                    <div class="form-text text-danger">{{ error }}</div>
-                {% endfor %}
-            </div>
-
-            {% if 'producto' in form.fields %}
-            <div class="mb-3">
-                <label class="form-label">Precio unitario</label>
-                <div id="product-price" class="form-control-plaintext">—</div>
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Subtotal</label>
-                <div id="product-subtotal" class="form-control-plaintext">—</div>
-            </div>
-            {% endif %}
-
-            <div class="mb-3">
-                <label for="{{ form.cantidad.id_for_label }}" class="form-label">Cantidad</label>
-                {{ form.cantidad }}
-                {% for error in form.cantidad.errors %}
-                    <div class="form-text text-danger">{{ error }}</div>
-                {% endfor %}
-            </div>
 
             {% if 'estado' in form.fields %}
             <div class="mb-3">
@@ -72,9 +52,86 @@
             </div>
             {% endif %}
 
+            <!-- Sección de detalles (productos del pedido) -->
+            <div class="mt-4 mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0"><i class="bi bi-box-seam me-1"></i> Productos del pedido</h5>
+                    <button type="button" id="add-row" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-plus-lg"></i> Agregar producto
+                    </button>
+                </div>
+
+                {% if detalles_formset.non_form_errors %}
+                <div class="alert alert-danger">
+                    {% for error in detalles_formset.non_form_errors %}{{ error }}{% endfor %}
+                </div>
+                {% endif %}
+
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle" id="detalles-table">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width:40%;">Producto</th>
+                                <th style="width:15%;">Precio unit.</th>
+                                <th style="width:15%;">Stock disp.</th>
+                                <th style="width:12%;">Cantidad</th>
+                                <th style="width:13%;">Subtotal</th>
+                                <th style="width:5%;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="detalles-tbody">
+                            {% for form in detalles_formset %}
+                            <tr class="detalle-row" data-index="{{ forloop.counter0 }}">
+                                <td>
+                                    {{ form.producto }}
+                                    {% for error in form.producto.errors %}
+                                        <div class="form-text text-danger mb-0">{{ error }}</div>
+                                    {% endfor %}
+                                    {{ form.id }}
+                                </td>
+                                <td>
+                                    <span class="detalle-precio">—</span>
+                                </td>
+                                <td>
+                                    <span class="detalle-stock">—</span>
+                                </td>
+                                <td>
+                                    {{ form.cantidad }}
+                                    {% for error in form.cantidad.errors %}
+                                        <div class="form-text text-danger mb-0">{{ error }}</div>
+                                    {% endfor %}
+                                </td>
+                                <td>
+                                    <span class="detalle-subtotal fw-bold">—</span>
+                                </td>
+                                <td class="text-center">
+                                    {% if forloop.counter0 == 0 %}
+                                    <button type="button" class="btn btn-sm btn-danger delete-row" disabled style="visibility:hidden;">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                    {% else %}
+                                    <button type="button" class="btn btn-sm btn-danger delete-row">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                    {% endif %}
+                                    {{ form.DELETE }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="4" class="text-end fw-bold">Total del pedido:</td>
+                                <td colspan="2"><span id="pedido-total" class="fw-bold fs-5" style="color:var(--primary);">—</span></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
             <div style="display:flex; gap:.5rem; margin-top:1.25rem;">
                 <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-floppy"></i> Guardar
+                    <i class="bi bi-floppy"></i> Guardar Pedido
                 </button>
                 <a href="{% url 'pedido-list' %}" class="btn btn-secondary">
                     <i class="bi bi-arrow-left"></i> Cancelar
@@ -84,44 +141,157 @@
     </div>
 </div>
 
-{% if 'producto' in form.fields %}
 <script>
 (function () {
-    var prices = {{ product_prices_json|default:'{}'|safe }};
-    var productSelect = document.getElementById('{{ form.producto.id_for_label }}');
-    var quantityInput = document.getElementById('{{ form.cantidad.id_for_label }}');
-    var priceDisplay = document.getElementById('product-price');
-    var subtotalDisplay = document.getElementById('product-subtotal');
+    var productData = {{ product_list|default:'[]'|safe }};
+    var prices = {};
+    var stock = {};
+    var names = {};
+    productData.forEach(function(p) {
+        prices[p.id] = parseFloat(p.precio);
+        stock[p.id] = parseInt(p.stock);
+        names[p.id] = p.nombre;
+    });
 
-    function formatMoney(value) {
-        if (value === null || value === undefined || Number.isNaN(value)) {
-            return '—';
+    var tbody = document.getElementById('detalles-tbody');
+    var totalDisplay = document.getElementById('pedido-total');
+    var addBtn = document.getElementById('add-row');
+    var formPrefix = 'detalles';
+    var totalForms = {{ detalles_formset.total_form_count }};
+
+    function formatMoney(v) {
+        return '$' + Number(v).toFixed(2);
+    }
+
+    function updateRow(row) {
+        var select = row.querySelector('.detalle-producto');
+        var qtyInput = row.querySelector('.detalle-cantidad');
+        var precioSpan = row.querySelector('.detalle-precio');
+        var stockSpan = row.querySelector('.detalle-stock');
+        var subtotalSpan = row.querySelector('.detalle-subtotal');
+        var deleteBtn = row.querySelector('.delete-row');
+        var deleteCheck = row.querySelector('input[name$="-DELETE"]');
+
+        if (!select || !qtyInput) return;
+
+        var pid = select.value;
+        var unitPrice = prices[pid];
+        var availStock = stock[pid];
+
+        precioSpan.textContent = unitPrice !== undefined ? formatMoney(unitPrice) : '—';
+        stockSpan.textContent = availStock !== undefined ? availStock : '—';
+
+        var qty = parseInt(qtyInput.value, 10) || 0;
+        if (unitPrice && qty > 0) {
+            subtotalSpan.textContent = formatMoney(unitPrice * qty);
+        } else {
+            subtotalSpan.textContent = '—';
         }
-        return '$' + Number(value).toFixed(2);
-    }
 
-    function updatePrice() {
-        if (!productSelect || !priceDisplay || !subtotalDisplay) return;
-        var selectedId = productSelect.value;
-        var unitPrice = prices[selectedId];
-        priceDisplay.textContent = formatMoney(unitPrice);
-        var qty = quantityInput ? parseInt(quantityInput.value, 10) : 0;
-        if (!qty || !unitPrice) {
-            subtotalDisplay.textContent = '—';
-            return;
+        // Marcar para eliminar si no hay stock
+        if (deleteCheck) {
+            if (availStock === 0) {
+                deleteCheck.checked = true;
+                row.style.opacity = '0.4';
+            } else {
+                deleteCheck.checked = false;
+                row.style.opacity = '1';
+            }
         }
-        subtotalDisplay.textContent = formatMoney(unitPrice * qty);
+
+        updateTotal();
     }
 
-    if (productSelect) {
-        productSelect.addEventListener('change', updatePrice);
-    }
-    if (quantityInput) {
-        quantityInput.addEventListener('input', updatePrice);
+    function updateTotal() {
+        var total = 0;
+        tbody.querySelectorAll('.detalle-row').forEach(function(row) {
+            var sub = row.querySelector('.detalle-subtotal');
+            var txt = sub ? sub.textContent : '';
+            var num = parseFloat(txt.replace('$', ''));
+            if (!isNaN(num)) total += num;
+        });
+        totalDisplay.textContent = total > 0 ? formatMoney(total) : '—';
     }
 
-    updatePrice();
+    function toggleDeleteButtons() {
+        var rows = tbody.querySelectorAll('.detalle-row');
+        rows.forEach(function(row, i) {
+            var btn = row.querySelector('.delete-row');
+            if (btn) {
+                btn.disabled = (rows.length <= 1);
+                btn.style.visibility = (rows.length <= 1) ? 'hidden' : 'visible';
+            }
+        });
+    }
+
+    function addRow() {
+        var firstRow = tbody.querySelector('.detalle-row');
+        if (!firstRow) return;
+
+        var newIndex = totalForms;
+        var html = firstRow.outerHTML;
+
+        // Replace indices
+        html = html.replace(/-0-/g, '-' + newIndex + '-');
+        html = html.replace(/detalles-0/g, 'detalles-' + newIndex);
+        html = html.replace(/data-index="0"/, 'data-index="' + newIndex + '"');
+
+        // Clear values
+        var temp = document.createElement('div');
+        temp.innerHTML = html;
+        temp.querySelector('.detalle-producto').value = '';
+        temp.querySelector('.detalle-cantidad').value = '1';
+        temp.querySelector('.detalle-precio').textContent = '—';
+        temp.querySelector('.detalle-stock').textContent = '—';
+        temp.querySelector('.detalle-subtotal').textContent = '—';
+        var delCheck = temp.querySelector('input[name$="-DELETE"]');
+        if (delCheck) delCheck.checked = false;
+        temp.querySelector('.delete-row').style.visibility = 'visible';
+
+        var tr = temp.querySelector('tr');
+        tr.classList.add('detalle-row');
+        tr.dataset.index = newIndex;
+        tbody.appendChild(tr);
+
+        // Update total forms count
+        totalForms++;
+
+        bindEvents(tr);
+        toggleDeleteButtons();
+        updateRow(tr);
+    }
+
+    function removeRow(btn) {
+        var row = btn.closest('.detalle-row');
+        var deleteCheck = row.querySelector('input[name$="-DELETE"]');
+        if (deleteCheck) {
+            deleteCheck.checked = true;
+            row.remove();
+        }
+        updateTotal();
+        toggleDeleteButtons();
+    }
+
+    function bindEvents(row) {
+        var select = row.querySelector('.detalle-producto');
+        var qtyInput = row.querySelector('.detalle-cantidad');
+        var deleteBtn = row.querySelector('.delete-row');
+
+        if (select) select.addEventListener('change', function() { updateRow(row); });
+        if (qtyInput) qtyInput.addEventListener('input', function() { updateRow(row); });
+        if (deleteBtn) deleteBtn.addEventListener('click', function() { removeRow(deleteBtn); });
+    }
+
+    // Bind initial rows
+    tbody.querySelectorAll('.detalle-row').forEach(function(row) {
+        bindEvents(row);
+        updateRow(row);
+    });
+
+    // Add button
+    if (addBtn) addBtn.addEventListener('click', addRow);
+
+    toggleDeleteButtons();
 })();
 </script>
-{% endif %}
 {% endblock %}
