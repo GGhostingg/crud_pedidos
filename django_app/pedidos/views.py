@@ -8,7 +8,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.urls import reverse_lazy
 from django.core.paginator import Paginator
 from django.contrib import messages
-from django.db import models
+from django.db import models, IntegrityError
 from django.db import transaction
 from django.db.models.deletion import ProtectedError
 from django.views import View
@@ -83,10 +83,10 @@ class ClienteDeleteView(StaffRequiredMixin, DeleteView):
     def delete(self, request, *args, **kwargs):
         self.object = self.get_object()
         try:
-            response = super().delete(request, *args, **kwargs)
+            self.object.delete()
             messages.success(request, 'Cliente eliminado.')
-            return response
-        except ProtectedError:
+            return redirect(self.success_url)
+        except (ProtectedError, IntegrityError):
             return render(request, 'protected_error.html', {'object_type': 'cliente'}, status=400)
 
 
@@ -126,10 +126,10 @@ class ProductoDeleteView(StaffRequiredMixin, DeleteView):
     def delete(self, request, *args, **kwargs):
         self.object = self.get_object()
         try:
-            response = super().delete(request, *args, **kwargs)
+            self.object.delete()
             messages.success(request, 'Producto eliminado.')
-            return response
-        except ProtectedError:
+            return redirect(self.success_url)
+        except (ProtectedError, IntegrityError):
             return render(request, 'protected_error.html', {'object_type': 'producto'}, status=400)
 
 
@@ -261,10 +261,10 @@ class PedidoDeleteView(StaffRequiredMixin, DeleteView):
     def delete(self, request, *args, **kwargs):
         self.object = self.get_object()
         try:
-            response = super().delete(request, *args, **kwargs)
+            self.object.delete()
             messages.success(request, 'Pedido eliminado.')
-            return response
-        except ProtectedError:
+            return redirect(self.success_url)
+        except (ProtectedError, IntegrityError):
             return render(request, 'protected_error.html', {'object_type': 'pedido'}, status=400)
 
     def form_valid(self, form):
