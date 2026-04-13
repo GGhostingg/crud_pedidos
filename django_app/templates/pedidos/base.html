@@ -457,9 +457,9 @@
 
         <div class="sidebar-footer">
             <div class="sidebar-user">
-                <div class="sidebar-avatar">{{ user.username|first|upper }}</div>
+                <div class="sidebar-avatar">{{ display_name|first|upper }}</div>
                 <div style="overflow:hidden;">
-                    <div class="sidebar-username">{{ user.username }}</div>
+                    <div class="sidebar-username">{{ display_name }}</div>
                     <div class="sidebar-role">{% if user.is_staff %}Administrador{% else %}Usuario{% endif %}</div>
                 </div>
             </div>
@@ -485,7 +485,7 @@
                 {% if user.is_staff %}
                     <span class="topbar-badge badge-staff"><i class="bi bi-shield-check"></i> Administrador</span>
                 {% else %}
-                    <span class="topbar-badge badge-user"><i class="bi bi-person-check"></i> {{ user.username }}</span>
+                    <span class="topbar-badge badge-user"><i class="bi bi-person-check"></i> {{ display_name }}</span>
                 {% endif %}
             </div>
         </header>
@@ -573,7 +573,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <div style="padding:1.6rem 2rem;">
                 <p style="color:var(--text-muted);font-size:.875rem;text-align:center;margin-bottom:1.1rem;">
                     Ingresa tu contraseña para volver a entrar como
-                    <strong style="color:var(--text);">{{ user.username }}</strong>
+                    <strong style="color:var(--text);">{{ display_name }}</strong>
                 </p>
 
                 <div id="session-error" class="alert alert-danger d-none mb-3" style="padding:.55rem .85rem;font-size:.82rem;">
@@ -610,7 +610,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var WARNING_BEFORE  = 15;   /* segundos antes de expirar en que aparece la alerta flotante */
     var RENEW_URL  = '{% url "renovar-sesion" %}';
     var CSRF_TOKEN = '{{ csrf_token }}';
-    var USERNAME   = '{{ user.username|escapejs }}';
+    var USERNAME   = '{{ display_name|escapejs }}';
 
     var warningEl     = document.getElementById('session-warning');
     var modalEl       = document.getElementById('session-modal');

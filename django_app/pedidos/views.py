@@ -346,6 +346,16 @@ def handler_403(request, exception=None):
     return render(request, '403.html', status=403)
 
 
+def nombre_visible(request):
+    """Agrega display_name al contexto de todos los templates."""
+    if request.user.is_authenticated:
+        nombre = request.user.get_full_name()
+        if not nombre:
+            nombre = request.user.first_name or request.user.username
+        return {'display_name': nombre.strip()}
+    return {'display_name': request.user.username if not request.user.is_anonymous else ''}
+
+
 # ── REGISTRO ──────────────────────────────────────────────────────────
 class RegistroView(View):
     template_name = 'pedidos/registro.html'

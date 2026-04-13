@@ -200,7 +200,7 @@
         <div class="error-details">
             <strong><i class="bi bi-info-circle"></i> Información</strong>
             {% if user.is_authenticated %}
-                Estás conectado como <strong>{{ user.username }}</strong>. 
+                Estás conectado como <strong>{{ display_name }}</strong>. 
                 Si crees que esto es un error, contacta con el administrador.
             {% else %}
                 Debes estar autenticado para acceder a este contenido.

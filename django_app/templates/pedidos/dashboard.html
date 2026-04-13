@@ -5,7 +5,7 @@
 {% block content %}
 <div class="page-header">
     <div>
-        <h1 class="page-title">Bienvenido, {{ user.username }}</h1>
+        <h1 class="page-title">Bienvenido, {{ display_name }}</h1>
         <p class="page-subtitle">Resumen general del sistema de pedidos</p>
     </div>
     {% if user.is_staff %}
