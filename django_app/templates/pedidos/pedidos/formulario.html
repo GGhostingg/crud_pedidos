@@ -52,7 +52,7 @@
             </div>
             {% endif %}
 
-            <!-- Sección de detalles (productos del pedido) -->
+            <!-- Sección de detalles -->
             <div class="mt-4 mb-3">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h5 class="mb-0"><i class="bi bi-box-seam me-1"></i> Productos del pedido</h5>
@@ -82,44 +82,7 @@
                             </tr>
                         </thead>
                         <tbody id="detalles-tbody">
-                            {% for form in detalles_formset %}
-                            <tr class="detalle-row" data-index="{{ forloop.counter0 }}">
-                                <td>
-                                    {{ form.producto }}
-                                    {% for error in form.producto.errors %}
-                                        <div class="form-text text-danger mb-0">{{ error }}</div>
-                                    {% endfor %}
-                                    {{ form.id }}
-                                </td>
-                                <td>
-                                    <span class="detalle-precio">—</span>
-                                </td>
-                                <td>
-                                    <span class="detalle-stock">—</span>
-                                </td>
-                                <td>
-                                    {{ form.cantidad }}
-                                    {% for error in form.cantidad.errors %}
-                                        <div class="form-text text-danger mb-0">{{ error }}</div>
-                                    {% endfor %}
-                                </td>
-                                <td>
-                                    <span class="detalle-subtotal fw-bold">—</span>
-                                </td>
-                                <td class="text-center">
-                                    {% if forloop.counter0 == 0 %}
-                                    <button type="button" class="btn btn-sm btn-danger delete-row" disabled style="visibility:hidden;">
-                                        <i class="bi bi-x-lg"></i>
-                                    </button>
-                                    {% else %}
-                                    <button type="button" class="btn btn-sm btn-danger delete-row">
-                                        <i class="bi bi-x-lg"></i>
-                                    </button>
-                                    {% endif %}
-                                    {{ form.DELETE }}
-                                </td>
-                            </tr>
-                            {% endfor %}
+                            <!-- Las filas se generan dinamicamente con JS -->
                         </tbody>
                         <tfoot>
                             <tr>
@@ -148,21 +111,46 @@
     var productData = {{ product_list|default:'[]'|safe }};
     var prices = {};
     var stock = {};
-    var names = {};
+
+    // Construir opciones del select
+    var optionsHtml = '<option value="">---------</option>';
     productData.forEach(function(p) {
         prices[p.id] = parseFloat(p.precio);
         stock[p.id] = parseInt(p.stock);
-        names[p.id] = p.nombre;
+        optionsHtml += '<option value="' + p.id + '">' + p.nombre + ' — $' + parseFloat(p.precio).toFixed(2) + ' (Stock: ' + p.stock + ')</option>';
     });
 
     var tbody = document.getElementById('detalles-tbody');
     var totalDisplay = document.getElementById('pedido-total');
     var addBtn = document.getElementById('add-row');
-    var formPrefix = 'detalles';
-    var totalForms = {{ detalles_formset.total_form_count }};
+    var totalFormsInput = document.getElementById('id_detalles-TOTAL_FORMS');
+
+    var formCount = 0;
 
     function formatMoney(v) {
         return '$' + Number(v).toFixed(2);
+    }
+
+    function createRowHtml(index) {
+        return '<tr class="detalle-row">' +
+            '<td>' +
+                '<select name="detalles-' + index + '-producto" class="form-select detalle-producto" id="id_detalles-' + index + '-producto">' +
+                    optionsHtml +
+                '</select>' +
+            '</td>' +
+            '<td><span class="detalle-precio">—</span></td>' +
+            '<td><span class="detalle-stock">—</span></td>' +
+            '<td>' +
+                '<input type="number" name="detalles-' + index + '-cantidad" class="form-control detalle-cantidad" id="id_detalles-' + index + '-cantidad" value="1" min="1">' +
+            '</td>' +
+            '<td><span class="detalle-subtotal fw-bold">—</span></td>' +
+            '<td class="text-center">' +
+                '<button type="button" class="btn btn-sm btn-danger delete-row">' +
+                    '<i class="bi bi-x-lg"></i>' +
+                '</button>' +
+                '<input type="checkbox" name="detalles-' + index + '-DELETE" style="display:none;">' +
+            '</td>' +
+        '</tr>';
     }
 
     function updateRow(row) {
@@ -171,8 +159,6 @@
         var precioSpan = row.querySelector('.detalle-precio');
         var stockSpan = row.querySelector('.detalle-stock');
         var subtotalSpan = row.querySelector('.detalle-subtotal');
-        var deleteBtn = row.querySelector('.delete-row');
-        var deleteCheck = row.querySelector('input[name$="-DELETE"]');
 
         if (!select || !qtyInput) return;
 
@@ -190,17 +176,6 @@
             subtotalSpan.textContent = '—';
         }
 
-        // Marcar para eliminar si no hay stock
-        if (deleteCheck) {
-            if (availStock === 0) {
-                deleteCheck.checked = true;
-                row.style.opacity = '0.4';
-            } else {
-                deleteCheck.checked = false;
-                row.style.opacity = '1';
-            }
-        }
-
         updateTotal();
     }
 
@@ -215,66 +190,31 @@
         totalDisplay.textContent = total > 0 ? formatMoney(total) : '—';
     }
 
-    function toggleDeleteButtons() {
-        var rows = tbody.querySelectorAll('.detalle-row');
-        rows.forEach(function(row, i) {
-            var btn = row.querySelector('.delete-row');
-            if (btn) {
-                btn.disabled = (rows.length <= 1);
-                btn.style.visibility = (rows.length <= 1) ? 'hidden' : 'visible';
-            }
-        });
-    }
-
     function addRow() {
-        var firstRow = tbody.querySelector('.detalle-row');
-        if (!firstRow) return;
+        var index = formCount;
+        tbody.insertAdjacentHTML('beforeend', createRowHtml(index));
+        var newRow = tbody.lastElementChild;
 
-        var newIndex = totalForms;
-        var html = firstRow.outerHTML;
+        bindRowEvents(newRow);
+        updateRow(newRow);
 
-        // Replace indices
-        html = html.replace(/-0-/g, '-' + newIndex + '-');
-        html = html.replace(/detalles-0/g, 'detalles-' + newIndex);
-        html = html.replace(/data-index="0"/, 'data-index="' + newIndex + '"');
-
-        // Clear values
-        var temp = document.createElement('div');
-        temp.innerHTML = html;
-        temp.querySelector('.detalle-producto').value = '';
-        temp.querySelector('.detalle-cantidad').value = '1';
-        temp.querySelector('.detalle-precio').textContent = '—';
-        temp.querySelector('.detalle-stock').textContent = '—';
-        temp.querySelector('.detalle-subtotal').textContent = '—';
-        var delCheck = temp.querySelector('input[name$="-DELETE"]');
-        if (delCheck) delCheck.checked = false;
-        temp.querySelector('.delete-row').style.visibility = 'visible';
-
-        var tr = temp.querySelector('tr');
-        tr.classList.add('detalle-row');
-        tr.dataset.index = newIndex;
-        tbody.appendChild(tr);
-
-        // Update total forms count
-        totalForms++;
-
-        bindEvents(tr);
+        formCount++;
+        totalFormsInput.value = formCount;
         toggleDeleteButtons();
-        updateRow(tr);
     }
 
     function removeRow(btn) {
         var row = btn.closest('.detalle-row');
-        var deleteCheck = row.querySelector('input[name$="-DELETE"]');
-        if (deleteCheck) {
-            deleteCheck.checked = true;
-            row.remove();
-        }
+        // Disable inputs so Django doesn't receive them
+        row.querySelectorAll('select, input').forEach(function(el) {
+            el.disabled = true;
+        });
+        row.style.display = 'none';
         updateTotal();
         toggleDeleteButtons();
     }
 
-    function bindEvents(row) {
+    function bindRowEvents(row) {
         var select = row.querySelector('.detalle-producto');
         var qtyInput = row.querySelector('.detalle-cantidad');
         var deleteBtn = row.querySelector('.delete-row');
@@ -284,16 +224,24 @@
         if (deleteBtn) deleteBtn.addEventListener('click', function() { removeRow(deleteBtn); });
     }
 
-    // Bind initial rows
-    tbody.querySelectorAll('.detalle-row').forEach(function(row) {
-        bindEvents(row);
-        updateRow(row);
+    function toggleDeleteButtons() {
+        var rows = tbody.querySelectorAll('.detalle-row');
+        rows.forEach(function(row) {
+            var btn = row.querySelector('.delete-row');
+            if (btn) {
+                btn.style.display = (rows.length <= 1) ? 'none' : '';
+            }
+        });
+    }
+
+    // Crear primera fila
+    addRow();
+
+    // Boton agregar
+    if (addBtn) addBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        addRow();
     });
-
-    // Add button
-    if (addBtn) addBtn.addEventListener('click', addRow);
-
-    toggleDeleteButtons();
 })();
 </script>
 {% endblock %}

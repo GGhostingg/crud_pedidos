@@ -177,8 +177,6 @@ DetallePedidoFormSet = formset_factory(
     DetallePedidoForm,
     extra=1,
     can_delete=True,
-    min_num=1,
-    validate_min=True,
 )
 
 
